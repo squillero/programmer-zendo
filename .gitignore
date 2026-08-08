@@ -1,0 +1,33 @@
+# Copyright © 2026 Giovanni Squillero / Politecnico di Torino
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
+
+# MacOS
+._*
+.DS_Store
+.localized
+__MACOSX/
+.AppleDouble
+.LSOverride
+Icon[]
+
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Binaries
+*.dll
+*.dylib
+*.exe
+*.exe~
+*.so
+
+# IDE
+.idea/
+.vscode/
