@@ -1,10 +1,10 @@
 # ___  _   _ ___ _  _ ____ _  _ _ ____    ___  ____ ___
 # |__]  \_/   |  |__| |  | |\ | | |       |__] [__   |
 # |      |    |  |  | |__| | \| | |___    |__] ___]  |
-# <=<=<<https://github.com/squillero/pythonic-bst>>=>=>
-
-# Copyright 2023 Giovanni Squillero.
-# SPDX-License-Identifier: 0BSD
+#
+# Copyright © 2023 Giovanni Squillero / Politecnico di Torino
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
 
 import logging
 import random
@@ -156,7 +156,29 @@ def test_performances():
 def test_visit():
     bst = BST([n, n] for n in range(-5, 6))
     assert bst.visit_in_order() == [(n, n) for n in range(-5, 6)]
-    assert bst.visit_post_order() == [(-5, -5), (-4, -4), (-2, -2), (-1, -1), (-3, -3), (1, 1),
-                                      (2, 2), (4, 4), (5, 5), (3, 3), (0, 0)]
-    assert bst.visit_pre_order() == [(0, 0), (-3, -3), (-4, -4), (-5, -5), (-1, -1), (-2, -2),
-                                     (3, 3), (2, 2), (1, 1), (5, 5), (4, 4)]
+    assert bst.visit_post_order() == [
+        (-5, -5),
+        (-4, -4),
+        (-2, -2),
+        (-1, -1),
+        (-3, -3),
+        (1, 1),
+        (2, 2),
+        (4, 4),
+        (5, 5),
+        (3, 3),
+        (0, 0),
+    ]
+    assert bst.visit_pre_order() == [
+        (0, 0),
+        (-3, -3),
+        (-4, -4),
+        (-5, -5),
+        (-1, -1),
+        (-2, -2),
+        (3, 3),
+        (2, 2),
+        (1, 1),
+        (5, 5),
+        (4, 4),
+    ]

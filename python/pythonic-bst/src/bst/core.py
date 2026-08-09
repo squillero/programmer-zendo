@@ -1,10 +1,10 @@
 # ___  _   _ ___ _  _ ____ _  _ _ ____    ___  ____ ___
 # |__]  \_/   |  |__| |  | |\ | | |       |__] [__   |
 # |      |    |  |  | |__| | \| | |___    |__] ___]  |
-# <=<=<<https://github.com/squillero/pythonic-bst>>=>=>
-
-# Copyright 2023 Giovanni Squillero.
-# SPDX-License-Identifier: 0BSD
+#
+# Copyright © 2023 Giovanni Squillero / Politecnico di Torino
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
 
 import logging
 from math import nan
@@ -143,8 +143,9 @@ class BST:
     @staticmethod
     def _visit(node, pre_order=None, in_order=None, post_order=None):
         """Generic recursive visit in pre-/in-/post- order"""
-        assert sum([pre_order is not None, in_order is not None, post_order
-                    is not None]) == 1, f"Exactly one type of visit must be specified."
+        assert sum([pre_order is not None, in_order is not None, post_order is not None]) == 1, (
+            f"Exactly one type of visit must be specified."
+        )
         if node is not None:
             if pre_order is not None:
                 pre_order.append((node.key, node.value))
