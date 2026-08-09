@@ -8,8 +8,8 @@
 
 __version__ = "1.0.3"
 __author__ = "Giovanni Squillero"
-__copyright__ = "Copyright 2023 Giovanni Squillero"
-__license__ = "0BSD"
+__copyright__ = "Copyright 2023 Giovanni Squillero / Politecnico di Torino"
+__license__ = "Free under certain conditions — see the LICENSE for details."
 __homepage__ = "https://github.com/squillero/pythonic-bst"
 
 __maintainer__ = "Giovanni Squillero"
