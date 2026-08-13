@@ -1,0 +1,14 @@
+# Copyright © 2026 Giovanni Squillero <giovanni.squillero@polito.it>
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
+
+[project]
+    name = "abstract-data-types"
+    version = "0.1"
+    requires-python = ">=3.10"
+    dependencies = ["icecream>=2.2.0", "pytest>=9.1.1", "tqdm>=4.70.0"]
+    description = "Examples of ADTs in Python."
+    authors = [
+        { name = "Giovanni Squillero", email = "giovanni.squillero@polito.it" },
+    ]
+    license = "Free under certain conditions — see the license for details."
