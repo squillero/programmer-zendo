@@ -74,6 +74,6 @@ uv run pytest -v .
 
 #### LICENSE
 
-Copyright © 2023 by [Giovanni Squillero](mailto:giovanni.squillero@polito.it) / Politecnico di Torino  
+Copyright © 2023 by [Giovanni Squillero](https://squillero.github.io/) / Politecnico di Torino  
 [https://github.com/squillero/programmer-zendo](https://github.com/squillero/programmer-zendo)  
 Free under certain conditions — see the license for details.  

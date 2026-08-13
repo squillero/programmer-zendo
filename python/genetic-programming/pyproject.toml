@@ -1,0 +1,34 @@
+#   *        Giovanni Squillero's GP Toolbox
+#  / \       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 2   +      A no-nonsense GP in pure Python
+#    / \     Coded @ GECCO 2024
+#  10   11   (Melburne, Australia)
+#
+# Copyright © 2024 Giovanni Squillero / Politecnico di Torino
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
+
+[project]
+    name = "gxgp"
+    version = "0.1.0"
+    description = "A no-nonsense GP implementation in Python"
+    readme = "README.md"
+    authors = [
+        { name = "Giovanni Squillero", email = "giovanni.squillero@polito.it" },
+    ]
+    requires-python = ">=3.13"
+    dependencies = [
+        "icecream>=2.2.0",
+        "jupyter>=1.1.1",
+        "matplotlib>=3.11.1",
+        "networkx>=3.6.1",
+        "pydot>=4.0.1",
+        "tqdm>=4.70.0",
+    ]
+
+    [project.scripts]
+        gxgp = "gxgp:main"
+
+[build-system]
+    requires      = ["uv_build>=0.12.3,<0.13.0"]
+    build-backend = "uv_build"

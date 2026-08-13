@@ -18,6 +18,6 @@ ernst.local / 10.10.0.247 => 195.158.3.42 (Uzbekistan)
 
 #### LICENSE
 
-Copyright © 2024-2026 by [Giovanni Squillero](mailto:giovanni.squillero@polito.it) / Politecnico di Torino  
+Copyright © 2024-2026 by [Giovanni Squillero](https://squillero.github.io/) / Politecnico di Torino  
 [https://github.com/squillero/programmer-zendo](https://github.com/squillero/programmer-zendo)  
 Free under certain conditions — see the license for details.  
