@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 var serviceGlobalURL = [...]string{
@@ -32,6 +33,7 @@ type GlobalRat struct {
 func (rat *GlobalRat) Squeal(ni *NodeInfo) {
 	slog.Debug("GlobalRat squeals:", "src", rat.source, "ip", rat.ip)
 	ni.EgressPoints.Add(rat.ip)
+	ni.Timestamp = time.Now()
 }
 
 func QueryGlobalRats(ctx context.Context, output chan<- Rat) {
@@ -42,6 +44,7 @@ func QueryGlobalRats(ctx context.Context, output chan<- Rat) {
 					ip:     ip,
 					source: url,
 				}
+				go QueryRDAPRats(ctx, ip, output)
 			}
 		}(serviceGlobalURL[i])
 	}

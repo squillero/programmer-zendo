@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -12,7 +12,10 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 )
+
+const RDAP_SERVER = "https://rdap.org/"
 
 // Minimal struct to parse relevant domain fields
 type RDAPDomain struct {
@@ -29,13 +32,16 @@ type RDAPRat struct {
 }
 
 func (rat *RDAPRat) Squeal(ni *NodeInfo) {
+	slog.Info("Pre Squeal", "ni", ni.NetworkName)
 	rat.country = canonize(rat.country)
 	slog.Info("RDAPRat squeals:", "name", rat.name, "country", rat.country)
+	ni.NetworkName[rat.ip] = rat.name
+	slog.Info("Post Squeal", "ni", ni.NetworkName)
+	ni.Timestamp = time.Now()
 }
 
 func QueryRDAPRats(ctx context.Context, ip string, output chan<- Rat) {
-	src := "https://rdap.org/ip/" + ip
-	slog.Warn("QueryRDAPRats", "ip", ip)
+	src := RDAP_SERVER + "ip/" + ip
 	raw := FetchRaw(map[string]string{"Accept": "application/rdap+json"}, ctx, src)
 	if raw == nil {
 		return
@@ -48,6 +54,12 @@ func QueryRDAPRats(ctx context.Context, ip string, output chan<- Rat) {
 	output <- &RDAPRat{
 		ip:      ip,
 		name:    info.Name,
+		country: info.Country,
+	}
+	output <- &GeoRat{
+		ip:      ip,
+		source:  RDAP_SERVER,
+		city:    "",
 		country: info.Country,
 	}
 }

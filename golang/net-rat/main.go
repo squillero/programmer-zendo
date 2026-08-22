@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -14,28 +14,28 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
-const RAT_VERSION = "0.3"
+const RAT_VERSION = "0.2.4"
 const DEFAULT_TIMEOUT = 2
-
-type verbosityLevel int
+const CACHE_UPDATE_TIMEOUT = 10
 
 var InvalidateEphemeras bool
-var GlobalTimeout time.Duration
 
 func main() {
 	log.SetPrefix("🐀 ") // 🐁 🐀
 	log.SetFlags(log.Lmsgprefix + log.Lmicroseconds)
 
+	verbosity := flag.Int("v", -1, "Verbosity, also -v or -vv")
+	timeOut := flag.Int("t", -1, "Set timeout")
+	cacheUpdate := flag.Bool("U", false, "Update cache and quit")
 	printVersion := flag.Bool("V", false, "Display version info and quit")
-	verbosity := flag.Int("v", 1, "Verbosity, also -v or -vv")
 	zapCache := flag.Bool("z", false, "Delete cache file")
-	waitForever := flag.Bool("w", false, "Wait indefinitely until connected")
-	timeOut := flag.Int("t", DEFAULT_TIMEOUT, "Set timeout")
 	flag.BoolVar(&InvalidateEphemeras, "i", false, "Invalidate all ephemeras")
 	var cmdline []string
 	for _, a := range os.Args[1:] {
@@ -47,6 +47,21 @@ func main() {
 		}
 	}
 	flag.CommandLine.Parse(cmdline)
+	if *cacheUpdate {
+		if *timeOut < 0 {
+			*timeOut = CACHE_UPDATE_TIMEOUT
+		}
+		if *verbosity < 0 {
+			*verbosity = 0
+		}
+	} else {
+		if *timeOut < 0 {
+			*timeOut = DEFAULT_TIMEOUT
+		}
+		if *verbosity < 0 {
+			*verbosity = 1
+		}
+	}
 	switch *verbosity {
 	case 0:
 		slog.SetLogLoggerLevel(slog.LevelError)
@@ -59,7 +74,7 @@ func main() {
 	}
 
 	bannerLine1 := "NetRat v" + RAT_VERSION
-	bannerLine2 := "(c) 2024-26 Giovananni Squillero <giovanni.squillero@polito.it>"
+	bannerLine2 := "(c) 2024-26 Giovanni Squillero / Politecnico di Torino"
 
 	if *printVersion {
 		fmt.Println(bannerLine1 + " " + bannerLine2)
@@ -71,12 +86,38 @@ func main() {
 	if *zapCache {
 		DeleteCache()
 	}
-	if *waitForever {
-		InvalidateEphemeras = true
-		GlobalTimeout = 24 * time.Hour
-	} else {
-		GlobalTimeout = time.Duration(*timeOut) * time.Second
+	t1 := time.Duration(*timeOut) * time.Second
+	t2 := t1 / 20
+	if *cacheUpdate {
+		slog.Debug("Running in cache-update mode", "pid", os.Getgid())
+		t2 = -1
 	}
 
-	DescribeNode()
+	// Describe node!
+	// ni := NodeInfo{Timestamp: time.Now()}
+	ni := DescribeNode(t1, t2)
+	fmt.Println(ni.NetworkName)
+	SaveCache(ni)
+	if *cacheUpdate {
+		slog.Info("Cache update completed")
+		os.Exit(0)
+	}
+
+	fmt.Println(ni.description)
+
+	// Parent Execution Branch
+	exe, err := os.Executable()
+	if err != nil {
+		slog.Error("os.Executable failed", "error", err)
+		os.Exit(1)
+	}
+	cmd := exec.Command(exe, "-U", "-v")
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
+	if err := cmd.Start(); err != nil {
+		slog.Error("cmd.Start() failed", "cmd", cmd, "error", err)
+		os.Exit(1)
+	}
 }

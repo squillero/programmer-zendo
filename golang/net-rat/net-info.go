@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -69,20 +69,25 @@ type NodeInfo struct {
 	EgressPoints       Ephemeras          `json:"egress_points"`
 	ResolutionTable    map[string]string  `json:"bindings"`
 	Geo                map[string]GeoInfo `json:"geo_info"`
+	NetworkName        map[string]string  `json:"net_name"`
 	// NodeInfo readable description (not saved in json)
 	host        string
 	private     string
 	vpn         string
 	public      string
 	geo         string
+	net         string
 	description string
 }
 
 func MakeNodeInfo() *NodeInfo {
-	return &NodeInfo{SchemaVersion: RAT_VERSION, Timestamp: time.Now(),
+	return &NodeInfo{
+		SchemaVersion:   RAT_VERSION,
+		Timestamp:       time.Now(),
 		ResolutionTable: make(map[string]string),
 		IFaces:          make(map[string]string),
-		Geo:             make(map[string]GeoInfo)}
+		Geo:             make(map[string]GeoInfo),
+		NetworkName:     make(map[string]string)}
 }
 
 func (ni *NodeInfo) CleanUp(cutTime time.Time) {
@@ -217,6 +222,12 @@ func (ni *NodeInfo) Update() bool {
 		ip = ni.private + " => " + ni.public
 	}
 
+	if name, ok := ni.NetworkName[ip]; ok {
+		ni.net = name
+	} else {
+		ni.net = ""
+	}
+
 	ni.description = ni.host + ip + geoStr
 	// return true if descr is completed
 	return ni.host != "" && ni.private != "" && ni.public != "" && ni.geo != ""
@@ -235,15 +246,14 @@ func (TimeOutRat) Squeal(ni *NodeInfo) {
 	log.Panicln("TimeOut Rats do not squeal!")
 }
 
-func DescribeNode() {
+func DescribeNode(timeout, timeoutExt time.Duration) *NodeInfo {
 	var ni *NodeInfo
-
 	if ni = LoadCache(); ni != nil {
 		var cut time.Time
 		if InvalidateEphemeras {
 			cut = time.Now()
 		} else {
-			cut = time.Now().Add(-5 * time.Minute)
+			cut = time.Now().Add(-666 * time.Minute)
 		}
 		ni.CleanUp(cut)
 	} else {
@@ -253,10 +263,9 @@ func DescribeNode() {
 	// I/O
 	rats := make(chan Rat)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GlobalTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	go QueryRDAPRats(ctx, "5.91.51.142", rats)
 	go QueryHostNameRats(rats)
 	go QueryHwRats(rats)
 	go QueryPrivateRats(ctx, rats)
@@ -282,17 +291,14 @@ func DescribeNode() {
 			active = false
 			continue
 		}
-		if ni.Update() && !alreadyHolding {
-			slog.Debug("NetworkInfo complete, holding 100 ms before quitting.")
+		if ni.Update() && !alreadyHolding && timeoutExt >= 0 {
+			slog.Debug("NetworkInfo complete, delaying exit:", "εₜ", timeoutExt)
 			go func() {
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(timeoutExt)
 				cancel() // cancel() is designed to be thread-safe and idempotent
 			}()
 			alreadyHolding = true
 		}
 	}
-
-	ni.Timestamp = time.Now()
-	SaveCache(ni)
-	fmt.Println(ni.description)
+	return ni
 }

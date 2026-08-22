@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -12,6 +12,7 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"time"
 )
 
 type HwRat struct {
@@ -42,6 +43,7 @@ func (rat *HwRat) Squeal(ni *NodeInfo) {
 			}
 		}
 		ni.IFaces[rat.hw] = rat.iface
+		ni.Timestamp = time.Now()
 	}
 }
 

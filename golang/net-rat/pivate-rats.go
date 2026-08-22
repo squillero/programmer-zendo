@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 )
 
 type PrivateRat struct {
@@ -24,6 +25,7 @@ func (rat *PrivateRat) Squeal(ni *NodeInfo) {
 	slog.Debug("PrivateRat squeals:", "src", rat.source, "ip", rat.ip, "loopback", rat.loopback)
 	if !rat.loopback {
 		ni.PrivateAddresses.Add(rat.ip)
+		ni.Timestamp = time.Now()
 	}
 }
 

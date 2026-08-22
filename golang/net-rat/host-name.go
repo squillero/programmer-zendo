@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -11,6 +11,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"time"
 )
 
 type HostNameRat struct {
@@ -21,6 +22,7 @@ type HostNameRat struct {
 func (rat *HostNameRat) Squeal(ni *NodeInfo) {
 	slog.Debug("HostNameRat squeals:", "name", rat.name, "source", rat.source)
 	ni.HostName = rat.name
+	ni.Timestamp = time.Now()
 }
 
 func QueryHostNameRats(output chan<- Rat) {

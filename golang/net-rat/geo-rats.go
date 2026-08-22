@@ -1,5 +1,5 @@
-//        ____()()     NetRat v0.3
-//       /      @@     ~~~~~~~~~~~
+//        ____()()     NetRat v0.2.4
+//       /      @@     ~~~~~~~~~~~~~
 // `~~~~~\_;m__m._>o   A tiny Go experiment
 //
 // Copyright © 2024-26 Giovanni Squillero / Politecnico di Torino
@@ -52,7 +52,7 @@ func (rat *GeoRat) Squeal(ni *NodeInfo) {
 		// Found it!
 		switch {
 		case val.City != "" && rat.city == "":
-			slog.Debug("Patching:", "city", val.City)
+			rat.city = val.City
 		case val.City != "" && rat.city != "" && val.City != rat.city:
 			slog.Debug("Inconsistent record:", "old", val, "new", *rat)
 		}
@@ -71,6 +71,7 @@ func (rat *GeoRat) Squeal(ni *NodeInfo) {
 	}
 	ni.Geo[rat.ip] = GeoInfo{Timestamp: time.Now(), City: rat.city, Country: rat.country}
 	ni.EgressPoints.Add(rat.ip)
+	ni.Timestamp = time.Now()
 }
 
 func QueryGeoRats(ctx context.Context, output chan<- Rat) {
