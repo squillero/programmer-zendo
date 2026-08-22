@@ -1,0 +1,22 @@
+# Copyright © 2025 Giovanni Squillero / Politecnico di Torino  
+# https://github.com/squillero/programmer-zendo  
+# Free under certain conditions — see the license for details 
+
+[project]
+    name = "optimization"
+    version = "0.1.0"
+    description = "Optimization lessons in Python"
+    readme = "README.md"
+    authors = [
+        { name = "Giovanni Squillero", email = "giovanni.squillero@polito.it" },
+    ]
+    requires-python = ">=3.13"
+    dependencies = [
+        "icecream>=2.2.0",
+        "jupyter>=1.1.1",
+        "matplotlib>=3.11.1",
+        "numpy>=2.5.2",
+        "pandas>=3.0.5",
+        "seaborn>=0.13.2",
+        "tqdm>=4.70.0",
+    ]
