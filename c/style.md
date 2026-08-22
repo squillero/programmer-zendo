@@ -1,4 +1,4 @@
-# Programmer Zendo: C with Style
+# C with Style
 
 > **Notez Bien**: All these rules are meant to be broken, **BUT** you need a very good reason **AND** you must explain it in a comment.
 

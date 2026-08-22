@@ -1,4 +1,4 @@
-# Programmer Zendo: Python with Style
+# Python with Style
 
 *Style is the answer to everything*  
 *A fresh way to approach a dull or dangerous thing*  
