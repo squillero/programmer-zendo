@@ -1,6 +1,6 @@
 # C with Style
 
-> **Notez Bien**: All these rules are meant to be broken, **BUT** you need a very good reason **AND** you must explain it in a comment.
+> **Notez Bien**: All these rules are meant to be broken, **BUT** you need a good reason **AND** you must explain it in a comment.
 
 ## Names (TL;DR)
 
