@@ -44,7 +44,7 @@ func QueryGlobalRats(ctx context.Context, output chan<- Rat) {
 					ip:     ip,
 					source: url,
 				}
-				go QueryRDAPRats(ctx, ip, output)
+				//go QueryRDAPRats(ctx, ip, output)
 			}
 		}(serviceGlobalURL[i])
 	}

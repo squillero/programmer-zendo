@@ -31,7 +31,7 @@ func main() {
 	log.SetPrefix("🐀 ") // 🐁 🐀
 	log.SetFlags(log.Lmsgprefix + log.Lmicroseconds)
 
-	verbosity := flag.Int("v", -1, "Verbosity, also -v or -vv")
+	verbosity := flag.Int("v", 0, "Verbosity, also -v or -vv")
 	timeOut := flag.Int("t", -1, "Set timeout")
 	cacheUpdate := flag.Bool("U", false, "Update cache and quit")
 	printVersion := flag.Bool("V", false, "Display version info and quit")
@@ -40,7 +40,7 @@ func main() {
 	var cmdline []string
 	for _, a := range os.Args[1:] {
 		if strings.HasPrefix(a, "-v") {
-			v := 2 + strings.Count(a[2:], "v")
+			v := 1 + strings.Count(a[2:], "v")
 			cmdline = append(cmdline, "-v="+strconv.Itoa(v))
 		} else {
 			cmdline = append(cmdline, a)
@@ -51,16 +51,11 @@ func main() {
 		if *timeOut < 0 {
 			*timeOut = CACHE_UPDATE_TIMEOUT
 		}
-		if *verbosity < 0 {
-			*verbosity = 0
-		}
 	} else {
 		if *timeOut < 0 {
 			*timeOut = DEFAULT_TIMEOUT
 		}
-		if *verbosity < 0 {
-			*verbosity = 1
-		}
+		*verbosity += 1 // Default verbosity when interactive is 1
 	}
 	switch *verbosity {
 	case 0:
@@ -77,7 +72,6 @@ func main() {
 	bannerLine2 := "(c) 2024-26 Giovanni Squillero / Politecnico di Torino"
 
 	if *printVersion {
-		fmt.Println(bannerLine1 + " " + bannerLine2)
 		os.Exit(0)
 	} else if *verbosity >= 2 {
 		log.Println(bannerLine1)
@@ -86,26 +80,30 @@ func main() {
 	if *zapCache {
 		DeleteCache()
 	}
-	t1 := time.Duration(*timeOut) * time.Second
-	t2 := t1 / 20
+	var ni *NodeInfo
 	if *cacheUpdate {
-		slog.Debug("Running in cache-update mode", "pid", os.Getgid())
-		t2 = -1
+		to := time.Duration(*timeOut) * 1000 * time.Millisecond
+		fmt.Printf("Running in cache-update mode: pid: %d -> %d, gid: %d\n", os.Getppid(), os.Getpid(), os.Getgid())
+		ni = UpdateCache(to)
+		fmt.Println(ni)
+	} else {
+		to := time.Duration(*timeOut) * 1000 * time.Millisecond
+		// Describe node!
+		ni = DescribeNode(to)
 	}
 
-	// Describe node!
-	// ni := NodeInfo{Timestamp: time.Now()}
-	ni := DescribeNode(t1, t2)
-	fmt.Println(ni.NetworkName)
-	SaveCache(ni)
+	if ni != nil {
+		SaveCache(ni)
+	}
 	if *cacheUpdate {
-		slog.Info("Cache update completed")
 		os.Exit(0)
 	}
-
 	fmt.Println(ni.description)
+	// os.Exit(0)
 
 	// Parent Execution Branch
+	slog.Error("Not spawning")
+	os.Exit(0)
 	exe, err := os.Executable()
 	if err != nil {
 		slog.Error("os.Executable failed", "error", err)

@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const MULTIPLE_IPS = "multiple IPs (load-balanced egress)"
+
 // Country represents the ISO 3166 structure
 type knownCIDR struct {
 	CIDR string `json:"cidr"`
@@ -57,19 +59,24 @@ const (
 	NO_NETWORK        string         = "No network detected"
 )
 
+type NName struct {
+	Ip          string
+	NetworkName string
+}
+
 // Comprehensive description of a node: MACs, local IPs, egress points, ...
 type NodeInfo struct {
 	// NodeInfo internal state
-	SchemaVersion      string             `json:"schema"`
-	Timestamp          time.Time          `json:"timestamp"`
-	HostName           string             `json:"hostname"`
-	IFaces             map[string]string  `json:"ifaces"`
-	LinkLayerAddresses Ephemeras          `json:"link_layer_addresses"`
-	PrivateAddresses   Ephemeras          `json:"private_ips"`
-	EgressPoints       Ephemeras          `json:"egress_points"`
-	ResolutionTable    map[string]string  `json:"bindings"`
-	Geo                map[string]GeoInfo `json:"geo_info"`
-	NetworkName        map[string]string  `json:"net_name"`
+	SchemaVersion      string              `json:"schema"`
+	Timestamp          time.Time           `json:"timestamp"`
+	HostName           Ephemeras[struct{}] `json:"hostname"`
+	IFaces             Ephemeras[string]   `json:"ifaces"`
+	LinkLayerAddresses Ephemeras[string]   `json:"link_layer_addresses"`
+	PrivateAddresses   Ephemeras[string]   `json:"private_ips"`
+	EgressPoints       Ephemeras[string]   `json:"egress_points"`
+	ResolutionTable    Ephemeras[string]   `json:"bindings"`
+	Geo                Ephemeras[GeoInfo]  `json:"geo_info"`
+	NetworkName        Ephemeras[string]   `json:"net_name"`
 	// NodeInfo readable description (not saved in json)
 	host        string
 	private     string
@@ -87,7 +94,7 @@ func MakeNodeInfo() *NodeInfo {
 		ResolutionTable: make(map[string]string),
 		IFaces:          make(map[string]string),
 		Geo:             make(map[string]GeoInfo),
-		NetworkName:     make(map[string]string)}
+		NetworkName:     make(map[string]map[string]string)}
 }
 
 func (ni *NodeInfo) CleanUp(cutTime time.Time) {
@@ -153,7 +160,7 @@ func (ni *NodeInfo) Update() bool {
 	case ni.PrivateAddresses.Len() == 1:
 		private = ni.PrivateAddresses.Peek()
 	case ni.PrivateAddresses.Len() > 1:
-		slog.Warn("Update", "PrivateAddresses", ni.PrivateAddresses)
+		slog.Debug("Update", "PrivateAddresses", ni.PrivateAddresses)
 		for _, ip := range ni.PrivateAddresses.Content {
 			if _, found := ni.ResolutionTable[ip]; found {
 				private = ip
@@ -174,7 +181,7 @@ func (ni *NodeInfo) Update() bool {
 		public = ni.EgressPoints.Peek()
 	case ni.EgressPoints.Len() > 1:
 		// log.Println(ni.EgressPoints)
-		public = "multiple IPs (load-balanced egress)"
+		public = MULTIPLE_IPS
 	}
 	if public != ni.public {
 		slog.Info("NodeInfo:", "public", public)
@@ -228,9 +235,10 @@ func (ni *NodeInfo) Update() bool {
 		ni.net = ""
 	}
 
-	ni.description = ni.host + ip + geoStr
 	// return true if descr is completed
-	return ni.host != "" && ni.private != "" && ni.public != "" && ni.geo != ""
+	ni.description = ni.host + ip + geoStr
+	return (ni.host != "" && ni.private != "" && ni.public != "" && ni.geo != "") ||
+		(ni.host != "" && ni.private != "" && ni.public == MULTIPLE_IPS)
 }
 
 // A generic Rat can update the node info
@@ -246,7 +254,7 @@ func (TimeOutRat) Squeal(ni *NodeInfo) {
 	log.Panicln("TimeOut Rats do not squeal!")
 }
 
-func DescribeNode(timeout, timeoutExt time.Duration) *NodeInfo {
+func DescribeNode(timeout time.Duration) *NodeInfo {
 	var ni *NodeInfo
 	if ni = LoadCache(); ni != nil {
 		var cut time.Time
@@ -291,14 +299,49 @@ func DescribeNode(timeout, timeoutExt time.Duration) *NodeInfo {
 			active = false
 			continue
 		}
-		if ni.Update() && !alreadyHolding && timeoutExt >= 0 {
-			slog.Debug("NetworkInfo complete, delaying exit:", "εₜ", timeoutExt)
+		if ni.Update() && !alreadyHolding {
+			slog.Error("NetworkInfo complete, delaying exit:", "εₜ", timeout/10)
 			go func() {
-				time.Sleep(timeoutExt)
+				time.Sleep(timeout / 10)
 				cancel() // cancel() is designed to be thread-safe and idempotent
 			}()
 			alreadyHolding = true
 		}
 	}
 	return ni
+}
+
+func UpdateCache(timeout time.Duration) *NodeInfo {
+	var ni *NodeInfo
+	if ni = LoadCache(); ni == nil {
+		return nil
+	}
+
+	// I/O
+	rats := make(chan Rat)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ips := make(map[string]struct{}, 0)
+	for ip := range ni.Geo {
+		ips[ip] = struct{}{}
+	}
+	for _, ip := range ni.EgressPoints.Data {
+		ips[ip.Info] = struct{}{}
+	}
+
+	go QueryGeoRats(ctx, rats)
+	for ip := range ips {
+		slog.Error("RDAP", "ip", ip)
+		go QueryRDAPRats(ctx, ip, rats)
+	}
+
+	for {
+		select {
+		case lead := <-rats:
+			lead.Squeal(ni)
+		case <-ctx.Done():
+			return ni
+		}
+	}
 }

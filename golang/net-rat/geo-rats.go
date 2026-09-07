@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"log"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 )
@@ -26,10 +27,9 @@ type GeoRat struct {
 
 // Country represents the ISO 3166 structure
 type Country struct {
-	Name    string `json:"name"`
-	Alpha2  string `json:"alpha2"`
-	Alpha3  string `json:"alpha3"`
-	Numeric string `json:"numeric"`
+	Name    string   `json:"name"`
+	Alias   []string `json:"alias"`
+	Numeric uint     `json:"numeric"`
 }
 
 var Countries []Country
@@ -136,7 +136,7 @@ func geoRatGeneric(url string, ctx context.Context, output chan<- Rat) {
 func canonize(geo string) string {
 	g := strings.ReplaceAll(strings.ToUpper(geo), ".", "")
 	for _, iso3166 := range Countries {
-		if g == iso3166.Alpha2 || g == iso3166.Alpha3 {
+		if slices.Contains(iso3166.Alias, g) {
 			slog.Debug("canonize:", "old", geo, "new", iso3166.Name)
 			return iso3166.Name
 		}

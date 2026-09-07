@@ -13,65 +13,54 @@ import (
 	"time"
 )
 
-type TimedInfo struct {
+type TimedInfo[T any] struct {
 	Time time.Time `json:"timestamp"`
-	Info string    `json:"info"`
+	Info T         `json:"info"`
 }
 
-type Ephemeras struct {
-	Data []TimedInfo `json:"ephemeras"`
+type Ephemeras[T any] struct {
+	Content map[string]TimedInfo[T]
 }
 
 // Enable `for t, x := range test.Content` through rewiring (go1.23+)
-func (e *Ephemeras) Content(yield func(time.Time, string) bool) {
-	for _, s := range e.Data {
-		if !yield(s.Time, s.Info) {
-			return
-		}
+
+func MakeEphemeras[T any]() Ephemeras[T] {
+	return Ephemeras[T]{
+		Content: make(map[string]TimedInfo[T]),
 	}
 }
 
 // Number of ephemeral entries
-func (e *Ephemeras) Len() int {
-	return len(e.Data)
+func (e *Ephemeras[T]) Len() int {
+	return len(e.Content)
 }
 
 // Add a value, update if newer
-func (e *Ephemeras) Add(info string) {
-	for i := range e.Data {
-		if e.Data[i].Info == info {
-			e.Data[i].Time = time.Now()
-			return
-		}
+func (e *Ephemeras[T]) Add(key string, info T) {
+	e.Content[key] = TimedInfo[T]{
+		Info: info,
+		Time: time.Now(),
 	}
-	e.Data = append(e.Data, TimedInfo{Info: info, Time: time.Now()})
 }
 
-func (e *Ephemeras) Invalidate(cutoff time.Time) int {
+func (e *Ephemeras[T]) Invalidate(cutoff time.Time) int {
 	num := 0
-	var new []TimedInfo
-	for _, d := range e.Data {
-		if d.Time.After(cutoff) {
-			new = append(new, d)
-			slog.Debug("Found valid ephemera:", "val", d.Info, "ΔT", time.Since(d.Time))
-		} else {
-			slog.Debug("Deleting invalid ephemera:", "val", d.Info, "ΔT", time.Since(d.Time))
+
+	for key, timedInfo := range e.Content {
+		if timedInfo.Time.Before(cutoff) {
+			delete(e.Content, key)
+			slog.Debug("Deleting invalid ephemera:", "key", key, "ΔT", time.Since(timedInfo.Time))
 			num++
 		}
 	}
-	e.Data = new
 	return num
 }
 
-func (e *Ephemeras) Find(val string) time.Time {
-	for _, d := range e.Data {
-		if d.Info == val {
-			return d.Time
-		}
+func (e *Ephemeras[T]) Get(key string) T {
+	if timedInfo, ok := e.Content[key]; ok {
+		return timedInfo.Info
+	} else {
+		var zero T
+		return zero
 	}
-	return time.Time{}
-}
-
-func (e *Ephemeras) Peek() string {
-	return e.Data[0].Info
 }
