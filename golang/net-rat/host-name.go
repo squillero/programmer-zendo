@@ -21,7 +21,7 @@ type HostNameRat struct {
 
 func (rat *HostNameRat) Squeal(ni *NodeInfo) {
 	slog.Debug("HostNameRat squeals:", "name", rat.name, "source", rat.source)
-	ni.HostName = rat.name
+	ni.HostName.Set(rat.name, struct{}{})
 	ni.Timestamp = time.Now()
 }
 

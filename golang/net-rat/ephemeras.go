@@ -19,48 +19,89 @@ type TimedInfo[T any] struct {
 }
 
 type Ephemeras[T any] struct {
-	Content map[string]TimedInfo[T]
+	TimedInfo map[string]TimedInfo[T]
 }
 
-// Enable `for t, x := range test.Content` through rewiring (go1.23+)
+// Enable `for key, info := range data.Content` through rewiring (go1.23+)
+func (e *Ephemeras[T]) Content(yield func(string, T) bool) {
+	for k, ti := range e.TimedInfo {
+		if !yield(k, ti.Info) {
+			return
+		}
+	}
+}
 
 func MakeEphemeras[T any]() Ephemeras[T] {
 	return Ephemeras[T]{
-		Content: make(map[string]TimedInfo[T]),
+		TimedInfo: make(map[string]TimedInfo[T]),
 	}
 }
 
 // Number of ephemeral entries
 func (e *Ephemeras[T]) Len() int {
-	return len(e.Content)
+	return len(e.TimedInfo)
 }
 
-// Add a value, update if newer
-func (e *Ephemeras[T]) Add(key string, info T) {
-	e.Content[key] = TimedInfo[T]{
+// Map `key` to `info` and set/update Time
+func (e *Ephemeras[T]) Set(key string, info T) {
+	e.TimedInfo[key] = TimedInfo[T]{
 		Info: info,
 		Time: time.Now(),
 	}
 }
 
-func (e *Ephemeras[T]) Invalidate(cutoff time.Time) int {
-	num := 0
-
-	for key, timedInfo := range e.Content {
-		if timedInfo.Time.Before(cutoff) {
-			delete(e.Content, key)
-			slog.Debug("Deleting invalid ephemera:", "key", key, "ΔT", time.Since(timedInfo.Time))
-			num++
-		}
+// Map `key` to `info` and set/update Time
+func (e *Ephemeras[T]) SetZero(key string) {
+	var zero T
+	e.TimedInfo[key] = TimedInfo[T]{
+		Info: zero,
+		Time: time.Now(),
 	}
-	return num
 }
 
+// Get `info` from `key`. Return `zero T` if not existing.
 func (e *Ephemeras[T]) Get(key string) T {
-	if timedInfo, ok := e.Content[key]; ok {
+	if timedInfo, ok := e.TimedInfo[key]; ok {
 		return timedInfo.Info
 	} else {
 		var zero T
 		return zero
 	}
+}
+
+// Check if `key` is mapped
+func (e *Ephemeras[T]) HasKey(key string) bool {
+	_, ok := e.TimedInfo[key]
+	return ok
+}
+
+// Return the latest mapping `key:info`
+func (e *Ephemeras[T]) LatestKey() string {
+	var zero T
+	latestKey := ""
+	latestInfo := TimedInfo[T]{
+		Time: time.Time{},
+		Info: zero,
+	}
+
+	for k, i := range e.TimedInfo {
+		if i.Time.After(latestInfo.Time) {
+			latestInfo = i
+			latestKey = k
+		}
+	}
+	return latestKey
+}
+
+func (e *Ephemeras[T]) Invalidate(cutoff time.Time) int {
+	num := 0
+
+	for key, timedInfo := range e.TimedInfo {
+		if timedInfo.Time.Before(cutoff) {
+			delete(e.TimedInfo, key)
+			slog.Debug("Deleting outdated ephemera:", "key", key, "ΔT", time.Since(timedInfo.Time))
+			num++
+		}
+	}
+	return num
 }

@@ -48,8 +48,9 @@ func init() {
 func (rat *GeoRat) Squeal(ni *NodeInfo) {
 	rat.country = canonize(rat.country)
 	slog.Debug("GeoRat squeals:", "src", rat.source, "ip", rat.ip, "city", rat.city, "country", rat.country)
-	if val, found := ni.Geo[rat.ip]; found {
-		// Found it!
+	if ni.Geo.HasKey(rat.ip) {
+		// Found an older GeoInfo!
+		val := ni.Geo.Get(rat.ip)
 		switch {
 		case val.City != "" && rat.city == "":
 			rat.city = val.City
@@ -69,8 +70,8 @@ func (rat *GeoRat) Squeal(ni *NodeInfo) {
 			slog.Warn("Inconsistent record:", "old", val, "new", *rat)
 		}
 	}
-	ni.Geo[rat.ip] = GeoInfo{Timestamp: time.Now(), City: rat.city, Country: rat.country}
-	ni.EgressPoints.Add(rat.ip)
+	ni.Geo.Set(rat.ip, GeoInfo{City: rat.city, Country: rat.country})
+	ni.EgressPoints.Set(rat.ip, struct{}{})
 	ni.Timestamp = time.Now()
 }
 

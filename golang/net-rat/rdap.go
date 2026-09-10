@@ -36,7 +36,7 @@ func (rat *RDAPRat) Squeal(ni *NodeInfo) {
 	rat.country = canonize(rat.country)
 	slog.Info("RDAPRat squeals:", "name", rat.name, "country", rat.country)
 	slog.Error("RDAPRat squeals:", "name", rat.name, "country", rat.country)
-	ni.NetworkName[rat.ip] = rat.name
+	ni.NetworkName.Set(rat.ip, rat.name)
 	slog.Info("Post Squeal", "ni", ni.NetworkName)
 	ni.Timestamp = time.Now()
 }

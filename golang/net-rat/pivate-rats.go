@@ -24,7 +24,7 @@ type PrivateRat struct {
 func (rat *PrivateRat) Squeal(ni *NodeInfo) {
 	slog.Debug("PrivateRat squeals:", "src", rat.source, "ip", rat.ip, "loopback", rat.loopback)
 	if !rat.loopback {
-		ni.PrivateAddresses.Add(rat.ip)
+		ni.PrivateAddresses.SetZero(rat.ip)
 		ni.Timestamp = time.Now()
 	}
 }

@@ -27,22 +27,18 @@ func (rat *HwRat) Squeal(ni *NodeInfo) {
 	}
 	if rat.hw != "" && rat.ip != "" {
 		slog.Debug("HwRat squeals:", "iface", rat.iface, "hw", rat.hw, "ip", rat.ip)
-		ni.LinkLayerAddresses.Add(rat.hw)
-		if _, found := ni.ResolutionTable[rat.ip]; !found {
-			ni.ResolutionTable[rat.ip] = rat.hw
-		} else {
-			if ni.ResolutionTable[rat.ip] != rat.hw {
-				log.Panicf("Conflicting bindings for %v (%v): %v vs. %v\n", rat.iface, rat.ip, ni.ResolutionTable[rat.ip], rat.hw)
-			}
-		}
+		//if ni.LinkLayerAddresses.Get(rat.hw) != rat.ip {
+		//	log.Panicf("Conflicting bindings for %v (%v): %v vs. %v\n", rat.iface, rat.ip, ni.LinkLayerAddresses.Get(rat.ip), rat.hw)
+		//}
+		ni.LinkLayerAddresses.Set(rat.hw, rat.ip)
 		// clean up existing entries with the same iface
-		for key, value := range ni.IFaces {
-			if value == rat.iface {
-				slog.Debug("Deleting old iface:", "k", rat.hw, "val", rat.iface)
-				delete(ni.IFaces, key)
-			}
-		}
-		ni.IFaces[rat.hw] = rat.iface
+		//for key, value := range ni.IFaces {
+		//	if value == rat.iface {
+		//		slog.Debug("Deleting old iface:", "k", rat.hw, "val", rat.iface)
+		//		delete(ni.IFaces, key)
+		//	}
+		//}
+		ni.IFaces.Set(rat.hw, rat.iface)
 		ni.Timestamp = time.Now()
 	}
 }

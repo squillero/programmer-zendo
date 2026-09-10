@@ -32,7 +32,7 @@ type GlobalRat struct {
 
 func (rat *GlobalRat) Squeal(ni *NodeInfo) {
 	slog.Debug("GlobalRat squeals:", "src", rat.source, "ip", rat.ip)
-	ni.EgressPoints.Add(rat.ip)
+	ni.EgressPoints.Set(rat.ip, struct{}{})
 	ni.Timestamp = time.Now()
 }
 
