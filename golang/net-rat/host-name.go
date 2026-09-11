@@ -32,5 +32,4 @@ func QueryHostNameRats(output chan<- Rat) {
 			name:   host,
 		}
 	}
-
 }

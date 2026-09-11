@@ -18,7 +18,7 @@ type TimedInfo[T any] struct {
 	Info T         `json:"info"`
 }
 
-type Ephemeras[T any] struct {
+type Ephemeras[T comparable] struct {
 	TimedInfo map[string]TimedInfo[T]
 }
 
@@ -31,7 +31,7 @@ func (e *Ephemeras[T]) Content(yield func(string, T) bool) {
 	}
 }
 
-func MakeEphemeras[T any]() Ephemeras[T] {
+func MakeEphemeras[T comparable]() Ephemeras[T] {
 	return Ephemeras[T]{
 		TimedInfo: make(map[string]TimedInfo[T]),
 	}
@@ -59,6 +59,7 @@ func (e *Ephemeras[T]) SetZero(key string) {
 	}
 }
 
+// All possible getters:
 // Get `info` from `key`. Return `zero T` if not existing.
 func (e *Ephemeras[T]) Get(key string) T {
 	if timedInfo, ok := e.TimedInfo[key]; ok {
@@ -69,14 +70,37 @@ func (e *Ephemeras[T]) Get(key string) T {
 	}
 }
 
-// Check if `key` is mapped
-func (e *Ephemeras[T]) HasKey(key string) bool {
-	_, ok := e.TimedInfo[key]
-	return ok
+// Get all `key` mapped to `info`. Return `zero T` if not existing.
+func (e *Ephemeras[T]) GetKeys(info T) []string {
+	keys := make([]string, 0)
+	for k, i := range e.TimedInfo {
+		if info == i.Info {
+			keys = append(keys, k)
+		}
+	}
+	return keys
 }
 
-// Return the latest mapping `key:info`
-func (e *Ephemeras[T]) LatestKey() string {
+// Get all `info`.
+func (e *Ephemeras[T]) GetAllInfos() []T {
+	all := make([]T, 0)
+	for _, i := range e.TimedInfo {
+		all = append(all, i.Info)
+	}
+	return all
+}
+
+// Get all `key`.
+func (e *Ephemeras[T]) GetAllKeys() []string {
+	all := make([]string, 0)
+	for k := range e.TimedInfo {
+		all = append(all, k)
+	}
+	return all
+}
+
+// Get the latest `key`.
+func (e *Ephemeras[T]) GetLatestKey() string {
 	var zero T
 	latestKey := ""
 	latestInfo := TimedInfo[T]{
@@ -93,6 +117,13 @@ func (e *Ephemeras[T]) LatestKey() string {
 	return latestKey
 }
 
+// Check if `key` exists.
+func (e *Ephemeras[T]) HasKey(key string) bool {
+	_, ok := e.TimedInfo[key]
+	return ok
+}
+
+// Invalidate all `info` older than `cutoff`.
 func (e *Ephemeras[T]) Invalidate(cutoff time.Time) int {
 	num := 0
 

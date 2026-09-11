@@ -16,6 +16,7 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"slices"
 	"time"
 )
 
@@ -70,20 +71,22 @@ type NodeInfo struct {
 	Timestamp          time.Time           `json:"timestamp"`
 	HostName           Ephemeras[struct{}] `json:"hostname"`
 	IFaces             Ephemeras[string]   `json:"ifaces"`
-	LinkLayerAddresses Ephemeras[string]   `json:"link_layer_addresses"`
+	IFaceAddresses     Ephemeras[struct{}] `json:"iface_ips"`
 	PrivateAddresses   Ephemeras[struct{}] `json:"private_ips"`
+	LinkLayerAddresses Ephemeras[string]   `json:"link_layer_addresses"`
 	EgressPoints       Ephemeras[struct{}] `json:"egress_points"`
-	// ResolutionTable    Ephemeras[string]   `json:"bindings"`
-	Geo         Ephemeras[GeoInfo] `json:"geo_info"`
-	NetworkName Ephemeras[string]  `json:"net_name"`
+	Geo                Ephemeras[GeoInfo]  `json:"geo_info"`
+	NetworkName        Ephemeras[string]   `json:"net_name"`
 	// NodeInfo readable description (not saved in json)
 	host        string
+	iface       string
 	private     string
 	vpn         string
 	public      string
 	geo         string
 	net         string
 	description string
+	// ResolutionTable    Ephemeras[string]   `json:"bindings"`
 }
 
 func MakeNodeInfo() *NodeInfo {
@@ -92,6 +95,7 @@ func MakeNodeInfo() *NodeInfo {
 		Timestamp:          time.Now(),
 		HostName:           MakeEphemeras[struct{}](),
 		IFaces:             MakeEphemeras[string](),
+		IFaceAddresses:     MakeEphemeras[struct{}](),
 		LinkLayerAddresses: MakeEphemeras[string](),
 		PrivateAddresses:   MakeEphemeras[struct{}](),
 		EgressPoints:       MakeEphemeras[struct{}](),
@@ -105,9 +109,8 @@ func (ni *NodeInfo) CleanUp(cutOffTime time.Time) {
 
 	// Ephemeras
 	tot := 0
-	tot += ni.PrivateAddresses.Invalidate(time.Now())
-	tot += ni.HostName.Invalidate(time.Now())
-
+	tot += ni.PrivateAddresses.Invalidate(cutOffTime)
+	tot += ni.HostName.Invalidate(cutOffTime)
 	tot += ni.LinkLayerAddresses.Invalidate(cutOffTime)
 	tot += ni.EgressPoints.Invalidate(cutOffTime)
 	//tot += ni.ResolutionTable.Invalidate(cutOffTime)
@@ -120,15 +123,12 @@ func (ni *NodeInfo) CleanUp(cutOffTime time.Time) {
 }
 
 func (ni *NodeInfo) Update() bool {
-	if newHost := ni.HostName.LatestKey(); newHost != "" {
-		if newHost != "" && newHost != ni.host {
-			slog.Info("NodeInfo:", "host", ni.HostName)
-		}
+	if newHost := ni.HostName.GetLatestKey(); newHost != "" {
 		ni.host = newHost + " / "
 	}
 
 	var private string
-	private = ni.PrivateAddresses.LatestKey()
+	private = ni.PrivateAddresses.GetLatestKey()
 	switch {
 	case private == "":
 		private = LOOPBACK // default
@@ -140,12 +140,34 @@ func (ni *NodeInfo) Update() bool {
 		ni.private = private
 	}
 
+	// iface
+	var iface string
+	if private != "" {
+		switch ni.IFaceAddresses.Len() {
+		case 0:
+			iface = ""
+		case 1:
+			iface = ni.IFaceAddresses.GetLatestKey()
+		case 2:
+			ips := ni.LinkLayerAddresses.GetAllInfos()
+			for _, i := range ni.IFaceAddresses.GetAllKeys() {
+				if slices.Contains(ips, i) {
+					iface = i
+				}
+			}
+		}
+		if iface != "" && iface != ni.iface {
+			slog.Info("NodeInfo:", "iface", iface)
+			ni.iface = iface
+		}
+	}
+
 	var public string
 	switch {
 	case ni.EgressPoints.Len() == 0:
 		public = ""
 	case ni.EgressPoints.Len() == 1:
-		public = ni.EgressPoints.LatestKey()
+		public = ni.EgressPoints.GetLatestKey()
 	case ni.EgressPoints.Len() > 1:
 		// log.Println(ni.EgressPoints)
 		public = MULTIPLE_IPS
@@ -155,22 +177,21 @@ func (ni *NodeInfo) Update() bool {
 		ni.public = public
 	}
 
-	oldGeo := ni.geo
-	geoStr := ""
 	if ni.public != "" {
-		if ni.Geo.HasKey(ni.public) {
-			ni.geo = ni.Geo.Get(ni.public).Country
-			geoStr = fmt.Sprintf(" (%v)", ni.geo)
+		// D'ho
+		if ni.Geo.HasKey(ni.public) && ni.NetworkName.Get(ni.public) != "" {
+			ni.geo = fmt.Sprintf(" (%v, %v)", ni.NetworkName.Get(ni.public), ni.Geo.Get(ni.public).Country)
+		} else if ni.Geo.HasKey(ni.public) {
+			ni.geo = fmt.Sprintf(" (%v)", ni.Geo.Get(ni.public).Country)
 		}
 		for _, known := range KnownCIDR {
 			if _, cidr, err := net.ParseCIDR(known.CIDR); err == nil {
 				if cidr.Contains(net.ParseIP(ni.public)) {
-					ni.geo = known.Name
 					if _, used := usedCIDRs[known.CIDR]; !used {
 						slog.Debug("KnownCIDR:", "cidr", cidr, "name", known.Name)
 						usedCIDRs[known.CIDR] = struct{}{}
 					}
-					geoStr = fmt.Sprintf(" [%v]", ni.geo)
+					ni.geo = fmt.Sprintf(" [%v]", known.Name)
 					break
 				}
 			} else {
@@ -178,29 +199,30 @@ func (ni *NodeInfo) Update() bool {
 			}
 		}
 	}
-	if ni.geo != oldGeo {
-		slog.Info("NodeInfo:", "geo", ni.geo)
-	}
 
 	var ip string
 	switch {
-	case ni.private == "" && ni.public != "":
-		log.Panicln("Panic: No network detected, but valid egress info")
-	case ni.private == "" && ni.public == "":
+	case ni.iface == "" && ni.private == "" && ni.public == "":
 		ip = "No network detected"
-	case ni.private != "" && ni.public == "":
+
+	case ni.iface == ni.private && ni.private != "" && ni.public == "":
 		ip = ni.private + " (local only)"
-	case ni.private != "" && ni.public != "" && ni.private == ni.public:
+	case ni.iface != ni.private && ni.private != "" && ni.public == "":
+		ip = ni.iface + " -> " + ni.private + " (local only)"
+
+	case ni.iface == ni.private && ni.public != "" && ni.private == ni.public:
 		ip = ni.public
-	case ni.private != "" && ni.public != "" && ni.private != ni.public:
+	case ni.iface != ni.private && ni.public != "" && ni.private == ni.public:
+		ip = ni.iface + " -> " + ni.public
+
+	case ni.iface == ni.private && ni.private != "" && ni.public != "" && ni.private != ni.public:
 		ip = ni.private + " => " + ni.public
+	case ni.iface != ni.private && ni.private != "" && ni.public != "" && ni.private != ni.public:
+		ip = ni.iface + " -> " + ni.private + " => " + ni.public
 	}
 
-	// D'ho
-	ni.net = ni.NetworkName.Get(ip)
-
 	// return true if descr is completed
-	ni.description = ni.host + ip + geoStr
+	ni.description = ni.host + ip + ni.geo
 	return (ni.host != "" && ni.private != "" && ni.public != "" && ni.geo != "") ||
 		(ni.host != "" && ni.private != "" && ni.public == MULTIPLE_IPS)
 }
@@ -240,6 +262,7 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 
 	go QueryHostNameRats(rats)
 	go QueryHwRats(rats)
+	go QueryIFaceRats(rats)
 	go QueryPrivateRats(ctx, rats)
 	go QueryGlobalRats(ctx, rats)
 	go QueryGeoRats(ctx, rats)
@@ -294,10 +317,28 @@ func UpdateCache(timeout time.Duration) *NodeInfo {
 		ips[ip] = struct{}{}
 	}
 
-	go QueryGeoRats(ctx, rats)
+	needGeo := false
+	needRDAP := false
 	for ip := range ips {
-		slog.Error("RDAP", "ip", ip)
-		go QueryRDAPRats(ctx, ip, rats)
+		if ni.Geo.HasKey(ip) {
+			slog.Debug("UpdateCache::Known GeoInfo:", "ip", ip, "info", ni.Geo.Get(ip))
+		} else {
+			needGeo = true
+		}
+		if ni.NetworkName.Get(ip) == "" {
+			go QueryRDAPRats(ctx, ip, rats)
+			needRDAP = true
+		} else {
+			slog.Debug("UpdateCache::Known NetworkName:", "name", ni.NetworkName.Get(ip))
+		}
+	}
+	if needGeo {
+		go QueryGeoRats(ctx, rats)
+	} else {
+		slog.Info("UpdateCache: No GeoRats needed")
+	}
+	if !needRDAP {
+		slog.Info("UpdateCache: No RDAPRats needed")
 	}
 
 	for {

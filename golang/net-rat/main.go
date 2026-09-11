@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const RAT_VERSION = "0.2.4"
+const RAT_VERSION = "0.2.5"
 const DEFAULT_TIMEOUT = 2
 const CACHE_UPDATE_TIMEOUT = 10
 
@@ -83,9 +83,9 @@ func main() {
 	var ni *NodeInfo
 	if *cacheUpdate {
 		to := time.Duration(*timeOut) * 1000 * time.Millisecond
-		fmt.Printf("Running in cache-update mode: pid: %d -> %d, gid: %d\n", os.Getppid(), os.Getpid(), os.Getgid())
+		slog.Debug("Running in cache-update mode", "pid", os.Getpid(), "ppid", os.Getppid())
 		ni = UpdateCache(to)
-		fmt.Println(ni)
+		slog.Debug("Running in cache-update mode: Done")
 	} else {
 		to := time.Duration(*timeOut) * 1000 * time.Millisecond
 		// Describe node!
@@ -99,19 +99,16 @@ func main() {
 		os.Exit(0)
 	}
 	fmt.Println(ni.description)
-	// os.Exit(0)
 
 	// Parent Execution Branch
-	slog.Error("Not spawning")
-	os.Exit(0)
 	exe, err := os.Executable()
 	if err != nil {
 		slog.Error("os.Executable failed", "error", err)
 		os.Exit(1)
 	}
-	cmd := exec.Command(exe, "-U", "-v")
+	cmd := exec.Command(exe, "-U")
 	cmd.Stdin = nil
-	cmd.Stdout = nil
+	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
 	if err := cmd.Start(); err != nil {
