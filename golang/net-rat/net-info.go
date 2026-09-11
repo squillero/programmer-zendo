@@ -287,7 +287,7 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 			continue
 		}
 		if ni.Update() && !alreadyHolding {
-			slog.Error("NetworkInfo complete, delaying exit:", "εₜ", timeout/10)
+			slog.Info("NetworkInfo complete, delaying exit:", "εₜ", timeout/10)
 			go func() {
 				time.Sleep(timeout / 10)
 				cancel() // cancel() is designed to be thread-safe and idempotent

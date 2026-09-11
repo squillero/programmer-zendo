@@ -83,9 +83,8 @@ func main() {
 	var ni *NodeInfo
 	if *cacheUpdate {
 		to := time.Duration(*timeOut) * 1000 * time.Millisecond
-		slog.Debug("Running in cache-update mode", "pid", os.Getpid(), "ppid", os.Getppid())
+		slog.Debug("main::Running in cache-update mode:", "pid", os.Getpid(), "ppid", os.Getppid())
 		ni = UpdateCache(to)
-		slog.Debug("Running in cache-update mode: Done")
 	} else {
 		to := time.Duration(*timeOut) * 1000 * time.Millisecond
 		// Describe node!
@@ -112,7 +111,9 @@ func main() {
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
 	if err := cmd.Start(); err != nil {
-		slog.Error("cmd.Start() failed", "cmd", cmd, "error", err)
+		slog.Error("main: cmd.Start() failed", "cmd", cmd, "error", err)
 		os.Exit(1)
+	} else {
+		slog.Info("main: spawned cache update")
 	}
 }
