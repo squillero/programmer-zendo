@@ -14,10 +14,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -97,20 +95,20 @@ func main() {
 	}
 
 	// Parent Execution Branch
-	exe, err := os.Executable()
-	if err != nil {
-		slog.Error("os.Executable failed", "error", err)
-		os.Exit(1)
-	}
-	cmd := exec.Command(exe, "-U")
-	cmd.Stdin = nil
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
-	if err := cmd.Start(); err != nil {
-		slog.Error("main: cmd.Start() failed", "cmd", cmd, "error", err)
-		os.Exit(1)
-	} else {
-		slog.Info("main: spawned cache update")
-	}
+	//exe, err := os.Executable()
+	//if err != nil {
+	//	slog.Error("os.Executable failed", "error", err)
+	//	os.Exit(1)
+	//}
+	//cmd := exec.Command(exe, "-U")
+	//cmd.Stdin = nil
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	//cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
+	//if err := cmd.Start(); err != nil {
+	//	slog.Error("main: cmd.Start() failed", "cmd", cmd, "error", err)
+	//	os.Exit(1)
+	//} else {
+	//	slog.Info("main: spawned cache update")
+	//}
 }
