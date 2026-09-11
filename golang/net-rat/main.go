@@ -14,10 +14,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -55,9 +53,8 @@ func main() {
 		if *timeOut < 0 {
 			*timeOut = DEFAULT_TIMEOUT
 		}
-		*verbosity += 1 // Default verbosity when interactive is 1
 	}
-	switch *verbosity {
+	switch *verbosity + 1 {
 	case 0:
 		slog.SetLogLoggerLevel(slog.LevelError)
 	case 1:
@@ -90,30 +87,28 @@ func main() {
 		// Describe node!
 		ni = DescribeNode(to)
 	}
-
+	if !*cacheUpdate {
+		fmt.Println(ni.description)
+	}
 	if ni != nil {
 		SaveCache(ni)
 	}
-	if *cacheUpdate {
-		os.Exit(0)
-	}
-	fmt.Println(ni.description)
 
 	// Parent Execution Branch
-	exe, err := os.Executable()
-	if err != nil {
-		slog.Error("os.Executable failed", "error", err)
-		os.Exit(1)
-	}
-	cmd := exec.Command(exe, "-U")
-	cmd.Stdin = nil
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
-	if err := cmd.Start(); err != nil {
-		slog.Error("main: cmd.Start() failed", "cmd", cmd, "error", err)
-		os.Exit(1)
-	} else {
-		slog.Info("main: spawned cache update")
-	}
+	// exe, err := os.Executable()
+	// if err != nil {
+	// 	slog.Error("os.Executable failed", "error", err)
+	// 	os.Exit(1)
+	// }
+	// cmd := exec.Command(exe, "-U")
+	// cmd.Stdin = nil
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true} // Detach process group (Unix)
+	// if err := cmd.Start(); err != nil {
+	// 	slog.Error("main: cmd.Start() failed", "cmd", cmd, "error", err)
+	// 	os.Exit(1)
+	// } else {
+	// 	slog.Info("main: spawned cache update")
+	// }
 }

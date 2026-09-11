@@ -148,7 +148,7 @@ func (ni *NodeInfo) Update() bool {
 			iface = ""
 		case 1:
 			iface = ni.IFaceAddresses.GetLatestKey()
-		case 2:
+		default:
 			ips := ni.LinkLayerAddresses.GetAllInfos()
 			for _, i := range ni.IFaceAddresses.GetAllKeys() {
 				if slices.Contains(ips, i) {
