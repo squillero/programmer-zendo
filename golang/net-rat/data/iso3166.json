@@ -154,7 +154,7 @@
   { "name": "Namibia", "alias": ["NA", "NAM"], "numeric": 516 },
   { "name": "Nauru", "alias": ["NR", "NRU"], "numeric": 520 },
   { "name": "Nepal", "alias": ["NP", "NPL"], "numeric": 524 },
-  { "name": "Netherlands", "alias": ["NL", "NLD"], "numeric": 528 },
+  { "name": "Netherlands", "alias": ["NL", "NLD", "THE NETHERLANDS"], "numeric": 528 },
   { "name": "New Caledonia", "alias": ["NC", "NCL"], "numeric": 540 },
   { "name": "New Zealand", "alias": ["NZ", "NZL"], "numeric": 554 },
   { "name": "Nicaragua", "alias": ["NI", "NIC"], "numeric": 558 },

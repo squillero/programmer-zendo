@@ -67,7 +67,9 @@ func (rat *GeoRat) Squeal(ni *NodeInfo) {
 		case len(val.Country) == 2 && len(rat.country) > 2:
 			slog.Debug("Updating:", "country", rat.country)
 		case val.Country != "" && rat.country != "" && val.Country != rat.country:
-			slog.Warn("Inconsistent record:", "old", val, "new", *rat)
+			slog.Warn("Inconsistent record!!!:", "old", val.Country, "new", rat.country)
+			slog.Warn("Inconsistent record!!!:", "C", canonize(val.Country))
+			slog.Warn("Inconsistent record!!!:", "C", canonize(rat.country))
 		}
 	}
 	ni.Geo.Set(rat.ip, GeoInfo{City: rat.city, Country: rat.country})

@@ -177,8 +177,10 @@ func (ni *NodeInfo) Update() bool {
 		ni.public = public
 	}
 
-	if ni.public != "" {
+	if ni.public == MULTIPLE_IPS {
 		// D'ho
+		ni.geo = ""
+	} else if ni.public != "" {
 		if ni.Geo.HasKey(ni.public) && ni.NetworkName.Get(ni.public) != "" {
 			ni.geo = fmt.Sprintf(" (%v, %v)", ni.NetworkName.Get(ni.public), ni.Geo.Get(ni.public).Country)
 		} else if ni.Geo.HasKey(ni.public) {
