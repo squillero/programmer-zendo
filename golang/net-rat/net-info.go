@@ -249,14 +249,14 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 		if InvalidateEphemeras {
 			cut = time.Now()
 		} else {
-			cut = time.Now().Add(-10 * time.Minute)
+			cut = time.Now().Add(10 * time.Minute)
 		}
 		ni.CleanUp(cut)
 	} else {
 		ni = MakeNodeInfo()
 	}
 	if ni.Update() {
-		slog.Info("All info are in cache.")
+		slog.Info("All required info are in cache.")
 		return ni
 	}
 
