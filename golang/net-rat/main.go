@@ -61,7 +61,7 @@ func main() {
 
 	if *printVersion {
 		os.Exit(0)
-	} else if *verbosity >= 2 {
+	} else if *verbosity >= 1 {
 		log.Println(bannerLine1)
 		log.Println(bannerLine2)
 	}
