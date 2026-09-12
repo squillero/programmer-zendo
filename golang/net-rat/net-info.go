@@ -256,6 +256,7 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 		ni = MakeNodeInfo()
 	}
 	if ni.Update() {
+		slog.Info("All info are in cache.")
 		return ni
 	}
 
