@@ -86,7 +86,6 @@ type NodeInfo struct {
 	geo         string
 	net         string
 	description string
-	// ResolutionTable    Ephemeras[string]   `json:"bindings"`
 }
 
 func MakeNodeInfo() *NodeInfo {
@@ -99,22 +98,24 @@ func MakeNodeInfo() *NodeInfo {
 		LinkLayerAddresses: MakeEphemeras[string](),
 		PrivateAddresses:   MakeEphemeras[struct{}](),
 		EgressPoints:       MakeEphemeras[struct{}](),
-		//ResolutionTable:    MakeEphemeras[string](),
-		Geo:         MakeEphemeras[GeoInfo](),
-		NetworkName: MakeEphemeras[string](),
+		Geo:                MakeEphemeras[GeoInfo](),
+		NetworkName:        MakeEphemeras[string](),
 	}
 }
 
-func (ni *NodeInfo) CleanUp(cutOffTime time.Time) {
+func (ni *NodeInfo) CleanUp(cutOffTimeShort, cutOffTimeLong time.Time) {
 
 	// Ephemeras
 	tot := 0
-	tot += ni.PrivateAddresses.Invalidate(cutOffTime)
-	tot += ni.HostName.Invalidate(cutOffTime)
-	tot += ni.LinkLayerAddresses.Invalidate(cutOffTime)
-	tot += ni.EgressPoints.Invalidate(cutOffTime)
-	//tot += ni.ResolutionTable.Invalidate(cutOffTime)
-	tot += ni.Geo.Invalidate(cutOffTime)
+	tot += ni.HostName.Invalidate(cutOffTimeShort)
+	tot += ni.IFaces.Invalidate(cutOffTimeShort)
+	tot += ni.IFaceAddresses.Invalidate(cutOffTimeShort)
+	tot += ni.LinkLayerAddresses.Invalidate(cutOffTimeShort)
+	tot += ni.PrivateAddresses.Invalidate(cutOffTimeShort)
+	tot += ni.EgressPoints.Invalidate(cutOffTimeShort)
+	tot += ni.Geo.Invalidate(cutOffTimeLong)
+	tot += ni.NetworkName.Invalidate(cutOffTimeLong)
+
 	if tot > 0 {
 		slog.Info("Cleaned up invalid ephemeras:", "n", tot)
 	} else {
@@ -249,9 +250,9 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 		if InvalidateEphemeras {
 			cut = time.Now()
 		} else {
-			cut = time.Now().Add(10 * time.Minute)
+			cut = time.Now().Add(-10 * time.Minute)
 		}
-		ni.CleanUp(cut)
+		ni.CleanUp(cut, time.Now().Add(-24*30*time.Hour))
 	} else {
 		ni = MakeNodeInfo()
 	}
