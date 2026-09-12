@@ -38,7 +38,22 @@ func (rat *RDAPRat) Squeal(ni *NodeInfo) {
 	ni.Timestamp = time.Now()
 }
 
-func QueryRDAPRats(ctx context.Context, ip string, output chan<- Rat) {
+func QueryRDAPRats(ctx context.Context, output chan<- Rat) {
+	ni := LoadCache()
+	if ni == nil {
+		return
+	}
+
+	for ip := range ni.Geo.Content {
+		go QueryRDAPRatsSingleIP(ctx, ip, output)
+	}
+	for ip := range ni.EgressPoints.Content {
+		go QueryRDAPRatsSingleIP(ctx, ip, output)
+	}
+
+}
+
+func QueryRDAPRatsSingleIP(ctx context.Context, ip string, output chan<- Rat) {
 	src := RDAP_SERVER + "/ip/" + ip
 	raw := FetchRaw(map[string]string{"Accept": "application/rdap+json"}, ctx, src)
 	if raw == nil {
@@ -46,7 +61,7 @@ func QueryRDAPRats(ctx context.Context, ip string, output chan<- Rat) {
 	}
 	var info RDAPDomain
 	if err := json.Unmarshal(raw, &info); err != nil {
-		slog.Error("QueryRDAPRats", "Unmarshal", err)
+		slog.Error("QueryRDAPRatsSingleIP", "Unmarshal", err)
 	}
 	slog.Info("RDAP", "rat", info)
 	output <- &RDAPRat{

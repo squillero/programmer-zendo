@@ -45,15 +45,6 @@ func main() {
 		}
 	}
 	flag.CommandLine.Parse(cmdline)
-	if *cacheUpdate {
-		if *timeOut < 0 {
-			*timeOut = CACHE_UPDATE_TIMEOUT
-		}
-	} else {
-		if *timeOut < 0 {
-			*timeOut = DEFAULT_TIMEOUT
-		}
-	}
 	switch *verbosity + 1 {
 	case 0:
 		slog.SetLogLoggerLevel(slog.LevelError)
@@ -78,12 +69,21 @@ func main() {
 		DeleteCache()
 	}
 	var ni *NodeInfo
+	var to time.Duration
 	if *cacheUpdate {
-		to := time.Duration(*timeOut) * 1000 * time.Millisecond
 		slog.Debug("main::Running in cache-update mode:", "pid", os.Getpid(), "ppid", os.Getppid())
+		if *timeOut < 0 {
+			to = time.Duration(CACHE_UPDATE_TIMEOUT) * 1000 * time.Millisecond
+		} else {
+			to = time.Duration(*timeOut) * 1000 * time.Millisecond
+		}
 		ni = UpdateCache(to)
 	} else {
-		to := time.Duration(*timeOut) * 1000 * time.Millisecond
+		if *timeOut < 0 {
+			to = time.Duration(DEFAULT_TIMEOUT) * 1000 * time.Millisecond
+		} else {
+			to = time.Duration(*timeOut) * 1000 * time.Millisecond
+		}
 		// Describe node!
 		ni = DescribeNode(to)
 	}

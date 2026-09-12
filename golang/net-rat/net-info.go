@@ -268,6 +268,7 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 	go QueryPrivateRats(ctx, rats)
 	go QueryGlobalRats(ctx, rats)
 	go QueryGeoRats(ctx, rats)
+	go QueryRDAPRats(ctx, rats)
 
 	alreadyHolding := false
 	startTime := time.Now()
@@ -328,7 +329,7 @@ func UpdateCache(timeout time.Duration) *NodeInfo {
 			needGeo = true
 		}
 		if ni.NetworkName.Get(ip) == "" {
-			go QueryRDAPRats(ctx, ip, rats)
+			go QueryRDAPRatsSingleIP(ctx, ip, rats)
 			needRDAP = true
 		} else {
 			slog.Debug("UpdateCache::Known NetworkName:", "name", ni.NetworkName.Get(ip))
@@ -342,13 +343,15 @@ func UpdateCache(timeout time.Duration) *NodeInfo {
 	if !needRDAP {
 		slog.Info("UpdateCache: No RDAPRats needed")
 	}
-
-	for {
-		select {
-		case lead := <-rats:
-			lead.Squeal(ni)
-		case <-ctx.Done():
-			return ni
+	if needGeo || needRDAP {
+		for {
+			select {
+			case lead := <-rats:
+				lead.Squeal(ni)
+			case <-ctx.Done():
+				return ni
+			}
 		}
 	}
+	return nil
 }
