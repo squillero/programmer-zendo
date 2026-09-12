@@ -249,11 +249,14 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 		if InvalidateEphemeras {
 			cut = time.Now()
 		} else {
-			cut = time.Now().Add(-666 * time.Minute)
+			cut = time.Now().Add(-10 * time.Minute)
 		}
 		ni.CleanUp(cut)
 	} else {
 		ni = MakeNodeInfo()
+	}
+	if ni.Update() {
+		return ni
 	}
 
 	// I/O
