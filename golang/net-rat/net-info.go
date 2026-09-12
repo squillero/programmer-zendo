@@ -303,6 +303,8 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 			alreadyHolding = true
 		}
 	}
+	log.Println(ni)
+
 	return ni
 }
 

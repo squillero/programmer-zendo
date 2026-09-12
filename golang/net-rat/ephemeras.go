@@ -131,6 +131,7 @@ func (e *Ephemeras[T]) Invalidate(cutoff time.Time) int {
 		if timedInfo.Time.Before(cutoff) {
 			delete(e.TimedInfo, key)
 			slog.Debug("Deleting outdated ephemera:", "key", key, "ΔT", time.Since(timedInfo.Time))
+			slog.Error("XXXX:", "key", key, "T", timedInfo.Time, "CT", cutoff, "ΔT", time.Since(timedInfo.Time))
 			num++
 		}
 	}
