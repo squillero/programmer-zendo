@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/4
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from itertools import product
 import numpy as np
 from icecream import ic
@@ -38,7 +38,9 @@ def count_accessible_rolls_part2(grid: np.ndarray) -> int:
         padded_grid = np.pad(adjacent_rolls, 1)
         adjacent_rolls *= -1
         for ox, oy in product([-1, 0, 1], repeat=2):
-            adjacent_rolls += padded_grid[ox + 1 : ox + dimx + 1, oy + 1 : oy + dimy + 1]
+            adjacent_rolls += padded_grid[
+                ox + 1 : ox + dimx + 1, oy + 1 : oy + dimy + 1
+            ]
         accessible_rolls = np.logical_and(grid == "@", adjacent_rolls < 4)
         last_removed = accessible_rolls.sum()
         total_removed += last_removed

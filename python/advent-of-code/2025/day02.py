@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/2
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from itertools import product
 import re
 from icecream import ic
@@ -18,12 +18,18 @@ INPUT_FILE_NAME = "day02-test.txt"
 
 def make_id(num_symbols: int) -> set[str]:
     """Generate a set of valid ids of length `num_symbols`."""
-    return set("".join(i) for i in product("0123456789", repeat=num_symbols) if i[0] != "0")
+    return set(
+        "".join(i) for i in product("0123456789", repeat=num_symbols) if i[0] != "0"
+    )
 
 
 def invalid_ids_p1(num_digits: int) -> set[str]:
     """Generate the set of all **invalid** ids of length `num_digits` (part 1)."""
-    return set(id_ * 2 for id_ in make_id(num_digits // 2)) if num_digits % 2 == 0 else set()
+    return (
+        set(id_ * 2 for id_ in make_id(num_digits // 2))
+        if num_digits % 2 == 0
+        else set()
+    )
 
 
 def invalid_ids_p2(num_digits: int) -> set[str]:
@@ -47,7 +53,9 @@ def solve_by_generating(id_ranges: list[tuple[str, str]]) -> None:
     # = [Part 1] ==================================================================================
     tot_invalid = 0
     for from_, to_ in id_ranges:
-        for id_ in set.union(*[invalid_ids_p1(d) for d in range(len(from_), len(to_) + 1)]):
+        for id_ in set.union(
+            *[invalid_ids_p1(d) for d in range(len(from_), len(to_) + 1)]
+        ):
             if int(from_) <= int(id_) <= int(to_):
                 tot_invalid += int(id_)
     ic(tot_invalid)
@@ -55,7 +63,9 @@ def solve_by_generating(id_ranges: list[tuple[str, str]]) -> None:
     # = [Part 2] ==================================================================================
     tot_invalid = 0
     for from_, to_ in id_ranges:
-        for id_ in set.union(*[invalid_ids_p2(d) for d in range(len(from_), len(to_) + 1)]):
+        for id_ in set.union(
+            *[invalid_ids_p2(d) for d in range(len(from_), len(to_) + 1)]
+        ):
             if int(from_) <= int(id_) <= int(to_):
                 tot_invalid += int(id_)
     ic(tot_invalid)

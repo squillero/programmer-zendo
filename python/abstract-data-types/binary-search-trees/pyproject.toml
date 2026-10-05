@@ -2,6 +2,7 @@
 # |__]  \_/   |  |__| |  | |\ | | |       |__] [__   |
 # |      |    |  |  | |__| | \| | |___    |__] ___]  |
 #
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2023 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.

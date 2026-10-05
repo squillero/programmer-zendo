@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from collections import namedtuple
 from operator import mul
@@ -24,7 +24,9 @@ Robot = namedtuple("Robot", ["x", "y", "vx", "vy"])
 def read_robots(filename):
     r"""Read robots position and velocity"""
     robot_status = r"p=(\d+),(\d+) v=(-?\d+),(-?\d+)"
-    return [Robot(*map(int, n)) for n in re.findall(robot_status, open(filename).read())]
+    return [
+        Robot(*map(int, n)) for n in re.findall(robot_status, open(filename).read())
+    ]
 
 
 def robot_step(robot):
@@ -53,7 +55,10 @@ def main():
             q[1] += 1
         elif 0 <= r.x < SPACE_WIDTH // 2 and r.y >= SPACE_HEIGHT - SPACE_HEIGHT // 2:
             q[2] += 1
-        elif r.x >= SPACE_WIDTH - SPACE_WIDTH // 2 and r.y >= SPACE_HEIGHT - SPACE_HEIGHT // 2:
+        elif (
+            r.x >= SPACE_WIDTH - SPACE_WIDTH // 2
+            and r.y >= SPACE_HEIGHT - SPACE_HEIGHT // 2
+        ):
             q[3] += 1
 
     safety_factor = reduce(mul, q)

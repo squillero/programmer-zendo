@@ -1,7 +1,7 @@
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2026 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 # This code sucks!
 
 import fileinput
@@ -51,7 +51,9 @@ def read_graph(G, filename, symmetric=True):
     n_cities = int(_extract_field("DIMENSION", whole_file))
     graph = G(n_cities)
     if format == "EXPLICIT":
-        data = deque(int(d) for d in _extract_numbers("EDGE_WEIGHT_SECTION", whole_file).split())
+        data = deque(
+            int(d) for d in _extract_numbers("EDGE_WEIGHT_SECTION", whole_file).split()
+        )
         if _extract_field("EDGE_WEIGHT_FORMAT", whole_file) == "LOWER_DIAG_ROW":
             for c1 in range(n_cities):
                 for c2 in range(c1):
@@ -75,7 +77,10 @@ def read_graph(G, filename, symmetric=True):
             _, x, y = map(float, l.split())
             cities.append((x, y))
         for c1, c2 in combinations(range(n_cities), r=2):
-            d = sqrt((cities[c1][0] - cities[c2][0]) ** 2 + (cities[c1][1] - cities[c2][1]) ** 2)
+            d = sqrt(
+                (cities[c1][0] - cities[c2][0]) ** 2
+                + (cities[c1][1] - cities[c2][1]) ** 2
+            )
             graph.add_edge(c1, c2, d)
             if symmetric:
                 graph.add_edge(c2, c1, d)
@@ -87,7 +92,10 @@ def read_graph(G, filename, symmetric=True):
             _, x, y = map(float, l.split())
             cities.append((x, y))
         for c1, c2 in combinations(range(n_cities), r=2):
-            d = sqrt((cities[c1][0] - cities[c2][0]) ** 2 + (cities[c1][1] - cities[c2][1]) ** 2)
+            d = sqrt(
+                (cities[c1][0] - cities[c2][0]) ** 2
+                + (cities[c1][1] - cities[c2][1]) ** 2
+            )
             graph.add_edge(c1, c2, d)
             if symmetric:
                 graph.add_edge(c2, c1, d)

@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/12
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from typing import Any
 
 from copy import copy
@@ -29,7 +29,10 @@ class Shape:
             self._pattern = pattern.copy()
         else:
             self._pattern = np.array(
-                [[1 if d == "#" else 0 for d in list(r.strip())] for r in pattern.split()],
+                [
+                    [1 if d == "#" else 0 for d in list(r.strip())]
+                    for r in pattern.split()
+                ],
                 dtype=int,
             )
 
@@ -64,9 +67,9 @@ class Canvas:
 
     def single_stroke(self, pos: Position, brush: Shape) -> None:
         brush_rows, brush_cols = brush.dim
-        self._canvas[pos.row : pos.row + brush_rows, pos.col : pos.col + brush_cols] += (
-            brush.pattern
-        )
+        self._canvas[
+            pos.row : pos.row + brush_rows, pos.col : pos.col + brush_cols
+        ] += brush.pattern
 
     def paint(self, strokes: list[tuple[Position, Shape]]) -> np.ndarray:
         self.erase()

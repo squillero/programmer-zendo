@@ -1,7 +1,7 @@
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2026 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from typing import Iterator
 import warnings
 
@@ -41,7 +41,9 @@ class Graph:
         # Complexity: O(deg(n))
         start_ptr = self._data.indptr[node]
         end_ptr = self._data.indptr[node + 1]
-        yield from zip(self._data.indices[start_ptr:end_ptr], self._data.data[start_ptr:end_ptr])
+        yield from zip(
+            self._data.indices[start_ptr:end_ptr], self._data.data[start_ptr:end_ptr]
+        )
 
     @property
     def size(self) -> int:

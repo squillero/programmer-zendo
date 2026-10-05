@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from itertools import product
 import numpy as np

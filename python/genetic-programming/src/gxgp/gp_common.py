@@ -4,10 +4,10 @@
 #    / \     Coded @ GECCO 2024
 #  10   11   (Melburne, Australia)
 #
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from copy import deepcopy
 
 from .node import Node

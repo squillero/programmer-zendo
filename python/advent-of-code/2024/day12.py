@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from dataclasses import dataclass
 from itertools import accumulate
@@ -85,7 +85,9 @@ def main():
     discounted_price = 0
     while pos := find_region(garden):
         area = flood(garden, pos)
-        *_, borders = accumulate(area, lambda x, p: x + list(p.neighbors - area), initial=list())
+        *_, borders = accumulate(
+            area, lambda x, p: x + list(p.neighbors - area), initial=list()
+        )
         price += len(area) * len(borders)
 
         sides = 0
@@ -97,7 +99,8 @@ def main():
                 p.left(garden) == p(garden) and p.left(garden) != p.left.below(garden)
             )
             sides += p(garden) != p.right(garden) and not (
-                p.above(garden) == p(garden) and p.above(garden) != p.above.right(garden)
+                p.above(garden) == p(garden)
+                and p.above(garden) != p.above.right(garden)
             )
             sides += p(garden) != p.left(garden) and not (
                 p.above(garden) == p(garden) and p.above(garden) != p.above.left(garden)

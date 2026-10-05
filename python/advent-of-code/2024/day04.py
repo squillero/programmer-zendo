@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 import numpy as np
 from icecream import ic
@@ -23,25 +23,33 @@ def get_paths(station, pos):
         paths.append(([r - o for o in range(TARGET.size)], [c] * TARGET.size))
     if r >= TARGET.size - 1 and c <= max_c - TARGET.size:
         # North-East
-        paths.append(([r - o for o in range(TARGET.size)], [c + o for o in range(TARGET.size)]))
+        paths.append(
+            ([r - o for o in range(TARGET.size)], [c + o for o in range(TARGET.size)])
+        )
     if c <= max_c - TARGET.size:
         # East
         paths.append(([r] * TARGET.size, [c + o for o in range(TARGET.size)]))
     if r <= max_r - TARGET.size and c <= max_c - TARGET.size:
         # South-East
-        paths.append(([r + o for o in range(TARGET.size)], [c + o for o in range(TARGET.size)]))
+        paths.append(
+            ([r + o for o in range(TARGET.size)], [c + o for o in range(TARGET.size)])
+        )
     if r <= max_r - TARGET.size:
         # South
         paths.append(([r + o for o in range(TARGET.size)], [c] * TARGET.size))
     if r <= max_r - TARGET.size and c >= TARGET.size - 1:
         # South-West
-        paths.append(([r + o for o in range(TARGET.size)], [c - o for o in range(TARGET.size)]))
+        paths.append(
+            ([r + o for o in range(TARGET.size)], [c - o for o in range(TARGET.size)])
+        )
     if c >= TARGET.size - 1:
         # West
         paths.append(([r] * TARGET.size, [c - o for o in range(TARGET.size)]))
     if r >= TARGET.size - 1:
         # North-West
-        paths.append(([r - o for o in range(TARGET.size)], [c - o for o in range(TARGET.size)]))
+        paths.append(
+            ([r - o for o in range(TARGET.size)], [c - o for o in range(TARGET.size)])
+        )
     return paths
 
 

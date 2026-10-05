@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from collections import deque, namedtuple
 from icecream import ic
@@ -69,9 +69,13 @@ def main():
             pos := next((i for i, s in enumerate(spaces) if s.len >= file.len), None)
         ) is not None and spaces[pos].start < file.start:
             free_block = spaces[pos]
-            layout[free_block.start : free_block.start + file.len] = [file.id] * file.len
+            layout[free_block.start : free_block.start + file.len] = [
+                file.id
+            ] * file.len
             layout[file.start : file.start + file.len] = [EMPTY_BLOCK] * file.len
-            spaces[pos] = Chunk(EMPTY_BLOCK, free_block.start + file.len, free_block.len - file.len)
+            spaces[pos] = Chunk(
+                EMPTY_BLOCK, free_block.start + file.len, free_block.len - file.len
+            )
     checksum = sum(pos * idx for pos, idx in enumerate(layout) if idx != EMPTY_BLOCK)
     ic(checksum)
 

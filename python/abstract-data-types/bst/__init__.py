@@ -2,10 +2,10 @@
 # |__]  \_/   |  |__| |  | |\ | | |       |__] [__   |
 # |      |    |  |  | |__| | \| | |___    |__] ___]  |
 #
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2023 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 __version__ = "1.0.3"
 __author__ = "Giovanni Squillero"
 __copyright__ = "Copyright 2023 Giovanni Squillero / Politecnico di Torino"

@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/10
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from collections.abc import Iterable
 from itertools import combinations
 import re
@@ -102,7 +102,9 @@ def main():
     with open(INPUT_FILE_NAME) as file:
         for line in file:
             assert (m := pattern.match(line))
-            machines.append(Machine(m.group("diagram"), m.group("buttons"), m.group("joltage")))
+            machines.append(
+                Machine(m.group("diagram"), m.group("buttons"), m.group("joltage"))
+            )
 
     # = [Part 1] ============================================================
     # Simple brute force

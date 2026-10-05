@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 import re
 from fractions import Fraction
@@ -78,7 +78,9 @@ def main():
     # --- Part One ---
     tokens = 0
     for target, buttons in problems:
-        assert buttons.a.x * buttons.b.y != buttons.a.y * buttons.b.x, "Infinite solutions"
+        assert buttons.a.x * buttons.b.y != buttons.a.y * buttons.b.x, (
+            "Infinite solutions"
+        )
         a = Fraction(
             buttons.b.y * target.x - buttons.b.x * target.y,
             buttons.a.x * buttons.b.y - buttons.a.y * buttons.b.x,
@@ -94,9 +96,13 @@ def main():
     # --- Part Two ---
     tokens = 0
     for target, buttons in problems:
-        target = State(x=target.x + 10000000000000, y=target.y + 10000000000000, tok=None)
+        target = State(
+            x=target.x + 10000000000000, y=target.y + 10000000000000, tok=None
+        )
 
-        assert buttons.a.x * buttons.b.y != buttons.a.y * buttons.b.x, "Infinite solutions"
+        assert buttons.a.x * buttons.b.y != buttons.a.y * buttons.b.x, (
+            "Infinite solutions"
+        )
         a = Fraction(
             buttons.b.y * target.x - buttons.b.x * target.y,
             buttons.a.x * buttons.b.y - buttons.a.y * buttons.b.x,

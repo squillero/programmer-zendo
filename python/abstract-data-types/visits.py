@@ -1,7 +1,7 @@
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2026 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 FILENAME = "ali535.tsp.bz2"
 
 import logging
@@ -66,7 +66,9 @@ def shortest_path(G: Graph, n1: int, n2: int) -> list[int]:
             break
         for n, w in G.neighbors(current):
             if dist[n] > cost + w:
-                logging.info(f"spath: relaxing {current}-{n}: {dist[n]:.3f} => {cost + w:.3f}")
+                logging.info(
+                    f"spath: relaxing {current}-{n}: {dist[n]:.3f} => {cost + w:.3f}"
+                )
                 path[n] = current
                 dist[n] = cost + w
                 frontier.push_update(n, cost + w)

@@ -4,10 +4,10 @@
 #    / \     Coded @ GECCO 2024
 #  10   11   (Melburne, Australia)
 #
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from collections.abc import Collection
 
 from .node import Node
@@ -18,10 +18,17 @@ __all__ = ['DagGP']
 
 
 class DagGP:
-    def __init__(self, operators: Collection, variables: int | Collection, constants: int | Collection):
+    def __init__(
+        self,
+        operators: Collection,
+        variables: int | Collection,
+        constants: int | Collection,
+    ):
         self._operators = list(operators)
         if isinstance(variables, int):
-            self._variables = [Node(DagGP.default_variable(i)) for i in range(variables)]
+            self._variables = [
+                Node(DagGP.default_variable(i)) for i in range(variables)
+            ]
         else:
             self._variables = [Node(t) for t in variables]
         if isinstance(constants, int):
@@ -30,7 +37,10 @@ class DagGP:
             self._constants = [Node(t) for t in constants]
 
     def create_individual(self, n_nodes=7):
-        pool = self._variables * (1 + len(self._constants) // len(self._variables)) + self._constants
+        pool = (
+            self._variables * (1 + len(self._constants) // len(self._variables))
+            + self._constants
+        )
         individual = None
         while individual is None or len(individual) < n_nodes:
             op = gxgp_random.choice(self._operators)

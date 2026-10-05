@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from collections import namedtuple
 import numpy as np
@@ -38,7 +38,11 @@ def walk_straight(pos, map_):
             pos.col + DIRECTION_STEP[pos.dir][1],
             pos.dir,
         )
-    return last_pos if (0 <= pos.row < map_.shape[0] and 0 <= pos.col < map_.shape[1]) else None
+    return (
+        last_pos
+        if (0 <= pos.row < map_.shape[0] and 0 <= pos.col < map_.shape[1])
+        else None
+    )
 
 
 def stuck_in_loop(pos, map_):
@@ -46,7 +50,10 @@ def stuck_in_loop(pos, map_):
     stepped = set()
     while 0 <= pos.row < map_.shape[0] and 0 <= pos.col < map_.shape[1]:
         stepped.add(pos)
-        if map_[pos.row, pos.col] == OBSTACLE or map_[pos.row, pos.col] == NEW_OBSTRUCTION:
+        if (
+            map_[pos.row, pos.col] == OBSTACLE
+            or map_[pos.row, pos.col] == NEW_OBSTRUCTION
+        ):
             pos = Position(
                 pos.row - DIRECTION_STEP[pos.dir][0],
                 pos.col - DIRECTION_STEP[pos.dir][1],

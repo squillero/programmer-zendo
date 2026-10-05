@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/3
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from itertools import combinations
 from icecream import ic
 
@@ -19,7 +19,9 @@ def main():
     # Easy one-liner...
     total_joltage = 0
     for battery in batteries:
-        total_joltage += max(int(a + b) for a, b in combinations(battery, NUM_BATTERIES))
+        total_joltage += max(
+            int(a + b) for a, b in combinations(battery, NUM_BATTERIES)
+        )
     ic(total_joltage)
 
     # = [Part 2] ==================================================================================

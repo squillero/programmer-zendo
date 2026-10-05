@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 import re
 from icecream import ic
@@ -23,7 +23,9 @@ def main():
 
     # --- Part Two ---
     result = 0
-    enabled = re.findall(r"""(?:(?<=do\(\))|^)(.*?)(?:(?=don't\(\))|$)""", text, flags=re.DOTALL)
+    enabled = re.findall(
+        r"""(?:(?<=do\(\))|^)(.*?)(?:(?=don't\(\))|$)""", text, flags=re.DOTALL
+    )
     for x, y in re.findall(ops, " ".join(enabled)):
         result += int(x) * int(y)
     ic(result)

@@ -1,8 +1,8 @@
 # Advent of Code 2025 | https://adventofcode.com/2025/day/9
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2025 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 from collections import namedtuple
 from itertools import combinations
 
@@ -24,7 +24,9 @@ def check_green(green_range, t1, t2):
     """Check if the square t1-t2 (whatever order) fits into the green area"""
     xs, ys = min(t1.x, t2.x), min(t1.y, t2.y)
     xe, ye = max(t1.x, t2.x), max(t1.y, t2.y)
-    return np.all(green_range[ys : ye + 1, 0] <= xs) and np.all(green_range[ys : ye + 1, 1] >= xe)
+    return np.all(green_range[ys : ye + 1, 0] <= xs) and np.all(
+        green_range[ys : ye + 1, 1] >= xe
+    )
 
 
 def main():
@@ -58,7 +60,9 @@ def main():
 
     # Let's use an explicit generator for readability.
     valid_corners = (
-        (t1, t2) for t1, t2 in combinations(red_tiles, r=2) if check_green(green_range, t1, t2)
+        (t1, t2)
+        for t1, t2 in combinations(red_tiles, r=2)
+        if check_green(green_range, t1, t2)
     )
     t1, t2 = max(valid_corners, key=lambda t: area(*t))
     ic(t1, t2, area(t1, t2))

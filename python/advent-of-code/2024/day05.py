@@ -1,8 +1,8 @@
 # Advent of Code 2024 | https://adventofcode.com/2024/day/1
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
 # Copyright © 2024 Giovanni Squillero / Politecnico di Torino
 # https://github.com/squillero/programmer-zendo
 # Free under certain conditions — see the license for details.
-
 
 from collections import namedtuple
 from itertools import accumulate
@@ -42,7 +42,9 @@ def check_update(sequence, rules):
 
 def add_page_to_sequence(sequence, page, rules):
     r"""Insert `page` into `sequence` in the first valid position -- O(len(seq))"""
-    candidates = (sequence[:i] + [page] + sequence[i:] for i in range(len(sequence) + 1))
+    candidates = (
+        sequence[:i] + [page] + sequence[i:] for i in range(len(sequence) + 1)
+    )
     return next(filter(partial(check_update, rules=rules), candidates))
 
 
@@ -57,7 +59,9 @@ def main():
     # --- Part Two ---
     correct_sequences = list()
     for wrong in filter(lambda s: not check_update(s, rules), updates):
-        *_, correct = accumulate(wrong, partial(add_page_to_sequence, rules=rules), initial=list())
+        *_, correct = accumulate(
+            wrong, partial(add_page_to_sequence, rules=rules), initial=list()
+        )
         correct_sequences.append(correct)
     checksum = sum(u[len(u) // 2] for u in correct_sequences)
     ic(checksum)
