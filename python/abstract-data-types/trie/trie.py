@@ -38,6 +38,8 @@ class RadixTrie:
         self._root = Node("")
 
     def __iter__(self) -> Iterator[str]:
+        if not self._root:
+            return iter(())  # empty trie
         # a generator is also and iterator...
         return RadixTrie._items("", self._root, "")
 
@@ -52,6 +54,8 @@ class RadixTrie:
 
     def add(self, data: str) -> None:
         # call recursive/static function
+        if not data.isalnum():
+            raise ValueError(f"Invalid word {data!r}: expected only letters and numbers")
         RadixTrie._add(self._root, data.upper() + "$")
 
     @staticmethod
