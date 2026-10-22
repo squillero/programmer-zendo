@@ -17,9 +17,9 @@
 
 - Use nouns for variables, full sentences for functions (`factors = factorize(formula)`); predicates (i.e., functions returning a boolean value) should start with the `is_` or `has_` prefix (`if is_gargled(quz):`); factory methods (i.e., functions returning types) are sometimes better described by a noun (`percentage = safe_value(0, 100); val = percentage()`).
 
-- Prefer an f-string (a.k.a., *formatted string literal*) over an explicit formatting operation or the string interpolation operator (`f"v={foo}"` instead of `"v={}".format(foo)` or `"v=%s" % (foo,)`). If possible, use single quotes for string constants such as function parameters and dictionary keys (`'utf-8'` or `data['foo']`), and use double quotes for messages to the user. If not possible (e.g., if you `ruff format`), always use double quote.
+- Prefer an f-string (a.k.a., *formatted string literal*) over an explicit formatting operation or the string interpolation operator (`f"v={foo}"` instead of `"v={}".format(foo)` or `"v=%s" % (foo,)`). If possible, use single quotes for string constants such as function parameters and dictionary keys (`'utf-8'` or `data['foo']`), and use double quotes for messages to the user. If not possible, always use double quote.
 
-- To defer the evaluation, use `%-formatting` in logging functions and pass the `%` parameters as arguments (`logging.warning("test: %r != %r", foo, bar)`).
+- Defer the evaluation using `%-formatting` in logging functions and pass the `%` parameters as arguments (`logging.warning("test: %r != %r", foo, bar)`). Use `isEnabledFor` when the arguments themselves are quite costly.
 
 - Start names internal to a module with a single underscore (`_foo`). Don't start names with double underscore (`__foo`); don't dunder (`__foo__`).
 
@@ -33,7 +33,7 @@
 
 - Complex compound statements (i.e., multiple statements on the same line) should be avoided.
 
-- Annotate all functions. Use the documentation at [https://typing.readthedocs.io/](https://typing.readthedocs.io/) as reference, also check the documentation of the module [`typing`](https://docs.python.org/3/library/typing.html#module-typing). Consider using [mypy](https://mypy-lang.org/) for linting and type checking.
+- Annotate all functions. Use the documentation at [https://typing.python.org/](https://typing.python.org/) as reference, also check the documentation of the module [`typing`](https://docs.python.org/3/library/typing.html#module-typing). Consider using [mypy](https://mypy-lang.org/) for linting and type checking.
 
 - Format source code either using [Ruff](https://docs.astral.sh/ruff/formatter/) or [Black](https://black.readthedocs.io/en/stable/), try not to mix them in the same project.
   * Set a line length up to 120.
