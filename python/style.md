@@ -58,6 +58,8 @@
 
 ## Comments and Docstrings
 
+- Docstrings and comments must be wrapped so that no line exceeds 80 characters.
+
 - Use English for names, in docstrings and in comments. Favor formal language over slang, wit over humor, and American English over British.
 
 - Explain the purpose of all functions and classes in docstrings, docstring should give enough information to write the calls and use the classes; be verbose when needed, otherwise use single-line descriptions (note: each verbose description also includes a concise one as its first line).
