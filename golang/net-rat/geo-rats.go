@@ -62,15 +62,13 @@ func (rat *GeoRat) Squeal(ni *NodeInfo) {
 		case val.Country != "" && rat.country == "":
 			slog.Debug("Patching:", "country", val.Country)
 			rat.country = val.Country
-		case strings.EqualFold(val.Country[:2], rat.country[:2]) && len(rat.country) == 2:
+		case len(rat.country) == 2 && len(val.Country) >= 2 && strings.EqualFold(val.Country[:2], rat.country[:2]):
 			slog.Debug("Patching:", "country", val.Country)
 			rat.country = val.Country
 		case len(val.Country) == 2 && len(rat.country) > 2:
 			slog.Debug("Updating:", "country", rat.country)
 		case val.Country != "" && rat.country != "" && val.Country != rat.country:
-			slog.Warn("Inconsistent record!!!:", "old", val.Country, "new", rat.country)
-			slog.Warn("Inconsistent record!!!:", "C", canonize(val.Country))
-			slog.Warn("Inconsistent record!!!:", "C", canonize(rat.country))
+			slog.Warn("Inconsistent geo record:", "ip", rat.ip, "old", val.Country, "new", rat.country)
 		}
 	}
 	ni.Geo.Set(rat.ip, GeoInfo{City: rat.city, Country: rat.country})
@@ -85,7 +83,6 @@ func QueryGeoRats(ctx context.Context, output chan<- Rat) {
 	go geoRatGeneric("http://ipinfo.io/json", ctx, output)
 	go geoRatGeneric("http://ip-api.com/json", ctx, output)
 	go geoRatGeneric("http://ipwho.is/", ctx, output)
-
 }
 
 func geoRatAirVPN(ctx context.Context, output chan<- Rat) {
