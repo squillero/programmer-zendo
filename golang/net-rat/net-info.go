@@ -104,6 +104,30 @@ func MakeNodeInfo() *NodeInfo {
 	}
 }
 
+func (ni *NodeInfo) ExtractIPs() []string {
+	ipsSet := make(map[string]struct{})
+	for _, i := range ni.IFaceAddresses.GetAllKeys() {
+		ipsSet[i] = struct{}{}
+	}
+	for _, i := range ni.LinkLayerAddresses.GetAllInfos() {
+		ipsSet[i] = struct{}{}
+	}
+	for _, i := range ni.EgressPoints.GetAllKeys() {
+		ipsSet[i] = struct{}{}
+	}
+	for _, i := range ni.Geo.GetAllKeys() {
+		ipsSet[i] = struct{}{}
+	}
+	for _, i := range ni.NetworkName.GetAllKeys() {
+		ipsSet[i] = struct{}{}
+	}
+	ips := make([]string, 0)
+	for i := range ipsSet {
+		ips = append(ips, i)
+	}
+	return ips
+}
+
 func (ni *NodeInfo) CleanUp(cutOffTimeShort, cutOffTimeLong time.Time) {
 
 	// Ephemeras
@@ -262,6 +286,14 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 		return ni
 	}
 
+	// static list of anonymous IPs
+	anonIPs := make([]string, 0)
+	for _, ip := range ni.ExtractIPs() {
+		if ni.NetworkName.Get(ip) == "" {
+			anonIPs = append(anonIPs, ip)
+		}
+	}
+
 	// I/O
 	rats := make(chan Rat)
 
@@ -274,7 +306,7 @@ func DescribeNode(timeout time.Duration) *NodeInfo {
 	go QueryPrivateRats(ctx, rats)
 	go QueryGlobalRats(ctx, rats)
 	go QueryGeoRats(ctx, rats)
-	go QueryRDAPRats(ctx, rats)
+	go QueryRDAPRats(ctx, anonIPs, rats)
 
 	alreadyHolding := false
 	startTime := time.Now()
@@ -331,7 +363,7 @@ func UpdateCache(timeout time.Duration) *NodeInfo {
 	needRDAP := false
 	for ip := range ips {
 		if ni.Geo.HasKey(ip) {
-			slog.Debug("UpdateCache::Known GeoInfo:", "ip", ip, "info", ni.Geo.Get(ip))
+			slog.Debug("UpdateCache::Known GeoInfo:", "ip", ip, "country", ni.Geo.Get(ip).Country)
 		} else {
 			needGeo = true
 		}
