@@ -83,7 +83,7 @@ Run COMMAND only if it has not run for INTERVAL; without arguments, list the
 tracked commands. INTERVAL counts calendar periods, eg. "30s", "2 minutes",
 "1h30m", "daily", "3 weeks", "1y6mo". A single argument with shell characters,
 or "-" for a script on stdin, runs with $SHELL -c. Successful runs are tracked
-in DB_PATH, for PRUNE_SECONDS seconds (ie. PRUNE_YEARS years).
+in a database for PRUNE_SECONDS seconds (ie. PRUNE_YEARS years).
 
 Options:
   -q  quiet: errors only
