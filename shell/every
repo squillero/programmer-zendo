@@ -314,8 +314,9 @@ cleanup() {
 trap cleanup EXIT
 
 # Rewrite the db dropping stale entries; with an argument, also set KEY's last
-# run to it. Each line is: last run (epoch) TAB command. Bad lines (see
-# check_db) are kept as they are, for the user to fix with -e
+# run to it. Each line is: last run (epoch) TAB command. Blank lines are
+# dropped; other bad lines (see check_db) are kept as they are, for the user
+# to fix with -e
 update_db() {
     local stamp=${1:-} tmp
     lock_db
@@ -323,6 +324,7 @@ update_db() {
     touch "$DB"
     if ! K="$KEY" NOW="$NOW" CUTOFF=$(( NOW - PRUNE_AGE )) STAMP="$stamp" awk -F'\t' '
             BEGIN { k = ENVIRON["K"]; stamp = ENVIRON["STAMP"] }
+            /^[[:space:]]*$/ { next }
             !('"$VALID_ENTRY"') { print; next }
             stamp != "" && $2 == k { next }
             $1 + 0 < ENVIRON["CUTOFF"] + 0 { next }
@@ -336,8 +338,8 @@ update_db() {
 }
 
 # Check that the db, or the file $1 (an edited copy of it), is valid; print one
-# line per problem (at most CHECK_MAX) and fail if there is any. A missing db
-# is valid: nothing has run yet
+# line per problem (at most CHECK_MAX) and fail if there is any. A missing or
+# empty db is valid: nothing has run yet. Blank lines are ignored
 check_db() {
     local file=${1:-$DB}
     [[ -e $file ]] || return 0
@@ -347,7 +349,7 @@ check_db() {
     fi
     NOW="${NOW:-$(date +%s)}" MAX="$CHECK_MAX" awk -F'\t' '
         function bad(why) { if (++n <= ENVIRON["MAX"] + 0) printf "line %d: %s\n", NR, why }
-        NF == 0 { bad("empty line"); next }
+        /^[[:space:]]*$/ { next }
         NF != 2 { bad("expected 2 tab-separated fields, found " NF); next }
         $1 !~ /^[0-9]+$/ { bad("timestamp \"" $1 "\" is not a number"); next }
         $1 + 0 > ENVIRON["NOW"] + 0 { bad("timestamp " $1 " is in the future"); next }
@@ -416,7 +418,8 @@ edit_db() {
         exit 1
     fi
     tmp=$(mktemp "${DB}.XXXXXX") || die "cannot write to ${DB_DIR}"
-    if ! cp "$copy" "$tmp" || ! mv "$tmp" "$DB"; then
+    # Drop blank lines: deleting every line in an editor often leaves one
+    if ! awk '!/^[[:space:]]*$/' "$copy" > "$tmp" || ! mv "$tmp" "$DB"; then
         rm -f "$tmp"
         die "cannot update ${DB}"
     fi
