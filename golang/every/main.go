@@ -80,11 +80,10 @@ const usageTerse = `Usage: PROG [-d] [-q|-v] [-a] [-t TAG] INTERVAL : COMMAND [A
        PROG [-d] [-q|-v] [-c|-e]
 
 Run COMMAND only if it has not run for INTERVAL; without arguments, list the
-tracked commands. INTERVAL counts calendar periods in local time, e.g. "30s",
-"2 minutes", "1h30m", "daily", "3 weeks", "1y6mo". A single argument with
-shell characters, or "-" for a script on stdin, runs with $SHELL -c.
-Successful runs are tracked in DB_PATH,
-for PRUNE_SECONDS seconds (ie. PRUNE_YEARS years).
+tracked commands. INTERVAL counts calendar periods, eg. "30s", "2 minutes",
+"1h30m", "daily", "3 weeks", "1y6mo". A single argument with shell characters,
+or "-" for a script on stdin, runs with $SHELL -c. Successful runs are tracked
+in DB_PATH, for PRUNE_SECONDS seconds (ie. PRUNE_YEARS years).
 
 Options:
   -q  quiet: errors only
@@ -101,7 +100,7 @@ Exit status: the command's if it runs, 1 if not, 2 on usage errors.
 
 const usageDetails = `
 INTERVAL is a number of periods on one time scale: seconds, minutes, hours,
-days, weeks, months or years, e.g. "30s", "2 minutes", "24h", "daily",
+days, weeks, months or years, eg. "30s", "2 minutes", "24h", "daily",
 "3 weeks", "month". The command is due when the clock or calendar has moved
 to a new period that many times since the last run (local time; weeks start
 on Monday). So "2 minutes" is not "120 seconds": a run at 10:00:59 makes
@@ -116,7 +115,7 @@ the other units, since their length varies.
 COMMAND and its ARGS run as they are, with no shell: "find . -exec rm {} \;"
 passes ";" to find. A single argument with spaces or shell characters is
 shell code, run by $SHELL -c (DEFAULT_SHELL), so it can use ;, &&, |,
-redirections and several lines. With "-", the script is read from stdin, e.g.
+redirections and several lines. With "-", the script is read from stdin, eg.
   PROG day : - <<'END'
   cd ~/src
   git pull && make
