@@ -1,0 +1,665 @@
+#!/bin/bash
+# Author: Giovanni Squillero <giovanni.squillero@polito.it>
+# Copyright © 2026 Giovanni Squillero / Politecnico di Torino
+# https://github.com/squillero/programmer-zendo
+# Free under certain conditions — see the license for details.
+
+# Run a command only if enough time has passed since its last run, e.g.
+#   every day : git pull          (once per calendar day)
+#   every 24h : git pull          (when the clock hour has changed 24 times)
+#   every 2 minutes : date        (2 minute changes: may be just 61 seconds apart)
+#   every 120s : date             (at least 120 seconds apart)
+#   every 2 weeks : brew cleanup  (calendar weeks, starting on Monday)
+#   every 1h30m : make backup     (90 minute changes)
+#   every day : 'cd ~/src && git pull && make'    (one argument: run by $SHELL)
+#   every day : - <<'EOF'                         (a script on stdin, run by $SHELL)
+# Runs are tracked per command in ${XDG_STATE_HOME:-~/.local/state}/every/last-run.tsv;
+# entries not run in the last year are pruned. The db is updated only when
+# the command succeeds. By default only warnings are printed: -v also tells
+# whether the command runs or is skipped, -q silences warnings too. With -a,
+# a due command runs only if the user confirms within a few seconds.
+# The db is locked only while it is being written, never while a command runs.
+# The exit status is the command's when it runs, 1 when it doesn't (not due
+# or not confirmed), and 2 on usage errors, so it can be tested with "if", e.g.
+#   if every week : true; then dot_info "First run this week"; fi
+
+#=[ PRETTY PRINTERS ]=========================================================
+# Colors only when stdout is a terminal and NO_COLOR is unset
+
+FANCY_NORMAL=""
+FANCY_ERROR=""
+FANCY_WARNING=""
+FANCY_INFO=""
+FANCY_NOTE=""
+
+_setup_fancy() {
+    local tput colors
+    tput=$(command -v tput) || return 1
+    colors=$("$tput" colors 2>/dev/null || echo 0)
+    if [[ -n ${NO_COLOR:-} || ! -t 1 || -z ${TERM:-} || ${TERM:-} == dumb ]]; then
+        return 1
+    fi
+    FANCY_NORMAL=$("$tput" sgr0)
+    if (( colors >= 256 )); then
+        FANCY_ERROR=$("$tput" setaf 203)
+        FANCY_WARNING=$("$tput" setaf 208)
+        FANCY_INFO=$("$tput" setaf 111)
+        FANCY_NOTE=$("$tput" setaf 183)
+    else
+        FANCY_ERROR=$("$tput" setaf 1)
+        FANCY_WARNING=$("$tput" setaf 3)
+        FANCY_INFO=$("$tput" setaf 4)
+        FANCY_NOTE=$("$tput" setaf 5)
+    fi
+}
+_setup_fancy
+
+dot_error() {
+    local msg="$*"
+    echo "${FANCY_ERROR}*${FANCY_NORMAL} ${msg:-Mu}"
+}
+
+dot_warning() {
+    local msg="$*"
+    echo "${FANCY_WARNING}*${FANCY_NORMAL} ${msg:-Mu}"
+}
+
+dot_info() {
+    local msg="$*"
+    echo "${FANCY_INFO}*${FANCY_NORMAL} ${msg:-Mu}"
+}
+
+dot_note() {
+    local msg="$*"
+    echo "${FANCY_NOTE}*${FANCY_NORMAL} ${msg:-Mu}"
+}
+
+set -o pipefail
+
+PROG=$(basename "$0")
+DB_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/every"
+DB="${DB_DIR}/last-run.tsv"
+LOCK="${DB}.lock"
+LOCK_TIMEOUT=2                # seconds to wait for another run to release the db
+# awk condition for a valid db line: epoch TAB command, with the epoch not in
+# the future (NOW from the environment)
+# shellcheck disable=SC2016  # awk code: the $ are awk fields
+VALID_ENTRY='NF == 2 && $1 ~ /^[0-9]+$/ && $1 + 0 <= ENVIRON["NOW"] + 0 && $2 != ""'
+CHECK_MAX=10                  # problems shown by check_db
+PRUNE_AGE=$(( 366 * 86400 ))  # one year, leap years included
+ASK_TIMEOUT=5                 # seconds to wait for -a confirmation
+
+quiet=0
+verbose=0
+dry_run=0
+clear=0
+ask=0
+
+usage() {
+    cat <<EOF
+Usage: ${PROG} [-d] [-q|-v] [-a] [-t TAG] INTERVAL : COMMAND [ARGS...]
+       ${PROG} [-d] [-q|-v] [-a] [-t TAG] INTERVAL : 'SHELL CODE'
+       ${PROG} [-d] [-q|-v] [-a] [-t TAG] INTERVAL : - < SCRIPT
+       ${PROG} [-d] [-q|-v] [-c|-e]
+
+Run COMMAND if it has not been run for INTERVAL. Without arguments, list the
+tracked commands and when they last ran. With -c, forget all of them.
+
+INTERVAL is a number of periods on one time scale: seconds, minutes, hours,
+days, weeks, months or years, e.g. "30s", "2 minutes", "24h", "daily",
+"3 weeks", "month". The command is due when the clock or calendar has moved
+to a new period that many times since the last run (local time; weeks start
+on Monday). So "2 minutes" is not "120 seconds": a run at 10:00:59 makes
+"2 minutes" due at 10:02:00, but "120 seconds" only at 10:02:59. Likewise
+"day" is due after midnight, "24h" after 24 changes of the hour.
+  units: s(ec), m(in), h(our), d(ay), w(eek), mo(nth), y(ear),
+         and hourly, daily, weekly, monthly, yearly
+A combination is converted to the finest unit in it: "1h30m" is 90 minutes,
+"1w2d" 9 days, "1y6mo" 18 months. Months and years can't be combined with
+the other units, since their length varies.
+
+COMMAND and its ARGS run as they are, with no shell: "find . -exec rm {} \;"
+passes ";" to find. A single argument with spaces or shell characters is
+shell code, run by \$SHELL -c (${SHELL:-/bin/sh}), so it can use ;, &&, |,
+redirections and several lines. With "-", the script is read from stdin, e.g.
+  ${PROG} day : - <<'END'
+  cd ~/src
+  git pull && make
+  END
+
+By default only warnings and errors are printed.
+
+Exit status: the command's when it runs; 1 when it doesn't, because it is not
+due or was not confirmed; 2 on usage errors. With -d: 0 if the command is due,
+1 if not. So "if ${PROG} week : true; then ...; fi" runs once a week, and
+"if ${PROG} -d week : CMD; then ...; fi" tests whether CMD is due.
+
+Options:
+  -q  quiet: print no warnings either, only errors
+  -v  verbose: say whether the command runs or is skipped, with db details
+      and the periods passed since the last run on every time scale
+  -a  ask: when the command is due, ask before running it; no answer within
+      ${ASK_TIMEOUT} seconds means no, and the command stays due
+  -d  dry run: neither run the command nor update the db
+  -t  track the runs under TAG instead of the command itself, so a command
+      can be changed without becoming due, and different commands can share
+      one schedule, e.g. "${PROG} -t backup day : rsync ..."
+  -c  clear: empty the db, so every command is due on its next run
+  -e  edit a copy of the db with \$EDITOR; if the result is valid, it replaces
+      the db, otherwise the db is left unchanged and the edits are kept in
+      the copy, as it is if the db changed while it was being edited. With -d,
+      only check the edited copy
+  -h  show this help
+EOF
+}
+
+say() { (( verbose )) && dot_info "$@" >&2; }
+say_verbose() { (( verbose )) && dot_note "$@" >&2; }
+die() { dot_error "${PROG}: $*" >&2; exit 2; }
+
+# The time scales, finest first, and the length of each in its group's base
+# unit: seconds for second..week, months for month and year
+SCALES=(second minute hour day week month year)
+SCALE_SIZE=(1 60 3600 86400 604800 1 12)
+
+# Parse a human-readable interval; print "SCALE N", e.g. "minute 90" for "1h30m"
+parse_interval() {
+    local text token n i g group="" finest="" total=0 count
+    text=$(printf '%s ' "$@" | tr '[:upper:]' '[:lower:]' |
+           sed -e 's/\([0-9]\)\([a-z]\)/\1 \2/g' -e 's/\([a-z]\)\([0-9]\)/\1 \2/g' -e 's/[,+]/ /g')
+    n=""
+    for token in $text; do
+        if [[ $token =~ ^[0-9]+$ ]]; then
+            [[ -n $n ]] && return 1
+            n=$((10#$token))
+            continue
+        fi
+        case "$token" in
+            and|every) continue ;;
+            s|sec|secs|second|seconds) i=0 ;;
+            m|min|mins|minute|minutes) i=1 ;;
+            h|hr|hrs|hour|hours|hourly) i=2 ;;
+            d|day|days|daily) i=3 ;;
+            w|wk|wks|week|weeks|weekly) i=4 ;;
+            mo|mon|month|months|monthly) i=5 ;;
+            y|yr|yrs|year|years|yearly|annually) i=6 ;;
+            *) return 1 ;;
+        esac
+        # Months and years have no fixed length in seconds: don't mix the groups
+        if (( i < 5 )); then g=fixed; else g=calendar; fi
+        [[ -z $group || $group == "$g" ]] || return 1
+        group=$g
+        if [[ -z $finest ]] || (( i < finest )); then
+            finest=$i
+        fi
+        total=$(( total + ${n:-1} * SCALE_SIZE[i] ))
+        n=""
+    done
+    [[ -z $n && -n $finest ]] || return 1
+    count=$(( total / SCALE_SIZE[finest] ))
+    (( count > 0 )) || return 1
+    echo "${SCALES[finest]} ${count}"
+}
+
+# Print the number of the period that contains epoch $1 on each time scale
+# (in the order of SCALES), in local time
+periods() {
+    local t=$1 off year month secs local_t day
+    read -r off year month <<< "$(fmt_time "$t" '%z %Y %m')"
+    secs=$(( (10#${off:1:2} * 60 + 10#${off:3:2}) * 60 ))
+    [[ ${off:0:1} == "-" ]] && secs=$(( -secs ))
+    local_t=$(( t + secs ))
+    day=$(( local_t / 86400 ))
+    # 1970-01-01 was a Thursday: shift by 3 days so weeks start on Monday
+    echo "$t $(( local_t / 60 )) $(( local_t / 3600 )) ${day} $(( (day + 3) / 7 ))" \
+         "$(( 10#$year * 12 + 10#$month - 1 )) $(( 10#$year ))"
+}
+
+# Format seconds as e.g. "2d 3h 5m"
+fmt_duration() {
+    local s=$1 out=""
+    (( s >= 86400 )) && out+="$(( s / 86400 ))d " && s=$(( s % 86400 ))
+    (( s >= 3600 )) && out+="$(( s / 3600 ))h " && s=$(( s % 3600 ))
+    (( s >= 60 )) && out+="$(( s / 60 ))m " && s=$(( s % 60 ))
+    if (( s > 0 )) || [[ -z $out ]]; then
+        out+="${s}s"
+    fi
+    echo "${out% }"
+}
+
+# Format epoch $1 with date format $2, on both GNU and BSD date
+fmt_time() {
+    date -d "@$1" "+$2" 2>/dev/null || date -r "$1" "+$2"
+}
+
+fmt_date() {
+    fmt_time "$1" '%Y-%m-%d %H:%M:%S'
+}
+
+# Format seconds in words, with the two largest units, e.g. "3 days and 12 hours"
+fmt_words() {
+    local s=$1 sizes=(86400 3600 60 1) names=(day hour minute second) i n out
+    for i in 0 1 2 3; do
+        (( s >= sizes[i] )) && break
+    done
+    out=$(plural $(( s / sizes[i] )) "${names[i]}")
+    if (( i < 3 )); then
+        n=$(( s % sizes[i] / sizes[i + 1] ))
+        (( n > 0 )) && out+=" and $(plural "$n" "${names[i + 1]}")"
+    fi
+    echo "$out"
+}
+
+# Print the tracked commands, most recent first
+list_db() {
+    local last cmd lines=()
+    NOW=$(date +%s)
+    if [[ -f $DB ]]; then
+        warn_bad_lines
+        while IFS=$'\t' read -r last cmd; do
+            (( NOW - last > PRUNE_AGE )) && continue
+            lines+=("$(fmt_date "$last") ($(fmt_words $(( NOW - last ))) ago): ${cmd}")
+        done < <(NOW="$NOW" awk -F'\t' "$VALID_ENTRY" "$DB" | sort -rn)
+    fi
+    say_verbose "db: ${DB} (${#lines[@]} entries)"
+    if (( ${#lines[@]} > 0 )); then
+        printf '%s\n' "${lines[@]}"
+    elif (( ! quiet )); then
+        dot_warning "no commands tracked yet" >&2
+    fi
+}
+
+plural() {
+    if (( $1 == 1 )); then echo "1 $2"; else echo "$1 $2s"; fi
+}
+
+# Lock the db while it is being written: call unlock_db as soon as it is done
+# (cleanup also releases it, if the run dies meanwhile). The lock is a
+# directory holding the pid of its owner, to tell a stale lock
+LOCKED=0
+lock_db() {
+    local tries=0 owner
+    mkdir -p "$DB_DIR" || die "cannot create ${DB_DIR}"
+    until mkdir "$LOCK" 2>/dev/null; do
+        owner=$(cat "${LOCK}/pid" 2>/dev/null)
+        if [[ -n $owner ]] && ! kill -0 "$owner" 2>/dev/null; then
+            die "cannot lock ${DB}: stale lock of pid ${owner}, which is gone; remove ${LOCK}"
+        fi
+        (( tries == 5 )) && say_verbose "waiting for ${DB}, in use by pid ${owner:-?}"
+        if (( ++tries > LOCK_TIMEOUT * 5 )); then
+            die "cannot lock ${DB}: in use by pid ${owner:-?} (remove ${LOCK} if stale)"
+        fi
+        sleep 0.2
+    done
+    LOCKED=1
+    echo "$$" > "${LOCK}/pid"
+}
+
+unlock_db() {
+    rm -rf "$LOCK"
+    LOCKED=0
+}
+
+# Release the lock and remove the temporary directory of -e, if any
+EDIT_DIR=""
+# shellcheck disable=SC2329  # called by the EXIT trap
+cleanup() {
+    if (( LOCKED )); then
+        rm -rf "$LOCK"
+    fi
+    if [[ -n $EDIT_DIR ]]; then
+        rm -rf "$EDIT_DIR"
+    fi
+}
+trap cleanup EXIT
+
+# Rewrite the db dropping stale entries; with an argument, also set KEY's last
+# run to it. Each line is: last run (epoch) TAB command. Bad lines (see
+# check_db) are kept as they are, for the user to fix with -e
+update_db() {
+    local stamp=${1:-} tmp
+    lock_db
+    tmp=$(mktemp "${DB}.XXXXXX") || die "cannot write to ${DB_DIR}"
+    touch "$DB"
+    if ! K="$KEY" NOW="$NOW" CUTOFF=$(( NOW - PRUNE_AGE )) STAMP="$stamp" awk -F'\t' '
+            BEGIN { k = ENVIRON["K"]; stamp = ENVIRON["STAMP"] }
+            !('"$VALID_ENTRY"') { print; next }
+            stamp != "" && $2 == k { next }
+            $1 + 0 < ENVIRON["CUTOFF"] + 0 { next }
+            { print }
+            END { if (stamp != "") print stamp "\t" k }
+        ' "$DB" > "$tmp" || ! mv "$tmp" "$DB"; then
+        rm -f "$tmp"
+        die "cannot update ${DB}"
+    fi
+    unlock_db
+}
+
+# Check that the db, or the file $1 (an edited copy of it), is valid; print one
+# line per problem (at most CHECK_MAX) and fail if there is any. A missing db
+# is valid: nothing has run yet
+check_db() {
+    local file=${1:-$DB}
+    [[ -e $file ]] || return 0
+    if [[ ! -f $file || ! -r $file ]]; then
+        echo "not a readable file"
+        return 1
+    fi
+    NOW="${NOW:-$(date +%s)}" MAX="$CHECK_MAX" awk -F'\t' '
+        function bad(why) { if (++n <= ENVIRON["MAX"] + 0) printf "line %d: %s\n", NR, why }
+        NF == 0 { bad("empty line"); next }
+        NF != 2 { bad("expected 2 tab-separated fields, found " NF); next }
+        $1 !~ /^[0-9]+$/ { bad("timestamp \"" $1 "\" is not a number"); next }
+        $1 + 0 > ENVIRON["NOW"] + 0 { bad("timestamp " $1 " is in the future"); next }
+        $2 == "" { bad("empty command"); next }
+        $2 in seen { bad("same command as line " seen[$2]); next }
+        { seen[$2] = NR }
+        END {
+            if (n > ENVIRON["MAX"] + 0) printf "... and %d more\n", n - ENVIRON["MAX"]
+            exit n > 0
+        }
+    ' "$file"
+}
+
+# Edit a copy of the db with $EDITOR; replace the db with it only if it is
+# valid and the db did not change while the editor was open. The db is locked
+# only to replace it, so other runs of every are not blocked by the editor
+edit_db() {
+    local orig copy current tmp problems
+    [[ -n ${EDITOR:-} ]] || die "EDITOR is not set"
+    EDIT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/every.XXXXXX") || die "cannot create a temporary directory"
+    orig="${EDIT_DIR}/original.tsv"
+    copy="${EDIT_DIR}/last-run.tsv"
+    if [[ -f $DB ]]; then
+        cp "$DB" "$orig" || die "cannot copy ${DB}"
+    elif [[ -e $DB ]]; then
+        die "${DB} is not a regular file"
+    else
+        : > "$orig"
+    fi
+    cp "$orig" "$copy" || die "cannot copy ${DB}"
+    say_verbose "db: ${DB}, editing ${copy}"
+
+    # EDITOR may hold options, e.g. "emacs -nw": let it split into words
+    # shellcheck disable=SC2086
+    if ! $EDITOR "$copy"; then
+        (( quiet )) || dot_warning "${PROG}: ${EDITOR} failed: ${DB} left unchanged" >&2
+        exit 1
+    fi
+    if cmp -s "$orig" "$copy"; then
+        say "no changes: ${DB} left unchanged"
+        exit 0
+    fi
+
+    NOW=$(date +%s)
+    if ! problems=$(check_db "$copy"); then
+        # Keep the edited copy, so the changes are not lost
+        if (( ! quiet )); then
+            dot_warning "${PROG}: the edited db is not valid: ${DB} left unchanged, edits kept in ${copy}" >&2
+            print_indented "$problems" >&2
+        fi
+        EDIT_DIR=""
+        exit 1
+    fi
+    if (( dry_run )); then
+        say "the edited db is valid, but ${DB} is left unchanged (dry run)"
+        exit 0
+    fi
+
+    lock_db
+    current=$DB
+    [[ -e $DB ]] || current=/dev/null
+    if ! cmp -s "$orig" "$current"; then
+        unlock_db
+        (( quiet )) || dot_warning "${PROG}: ${DB} changed while it was being edited: left unchanged, edits kept in ${copy}" >&2
+        EDIT_DIR=""
+        exit 1
+    fi
+    tmp=$(mktemp "${DB}.XXXXXX") || die "cannot write to ${DB_DIR}"
+    if ! cp "$copy" "$tmp" || ! mv "$tmp" "$DB"; then
+        rm -f "$tmp"
+        die "cannot update ${DB}"
+    fi
+    unlock_db
+    say "${DB} updated"
+}
+
+# Warn about bad lines in the db, unless quiet. They are ignored, but kept
+warn_bad_lines() {
+    local problems
+    (( quiet )) && return 0
+    problems=$(check_db) && return 0
+    dot_warning "${PROG}: bad lines in ${DB} are ignored; fix them with ${PROG} -e" >&2
+    print_indented "$problems" >&2
+}
+
+print_indented() {
+    local line
+    while IFS= read -r line; do
+        printf '    %s\n' "$line"
+    done <<< "$1"
+}
+
+# Forget all tracked commands
+clear_db() {
+    local count=0
+    [[ -f $DB ]] && count=$(awk -F'\t' 'NF == 2' "$DB" | wc -l | tr -d ' ')
+    say_verbose "db: ${DB}"
+    if (( dry_run )); then
+        (( quiet )) || dot_info "would clear $(plural "$count" entry | sed 's/entrys$/entries/') from the database" >&2
+        return
+    fi
+    if [[ -f $DB ]]; then
+        lock_db
+        rm -f "$DB" || die "cannot remove ${DB}"
+        unlock_db
+    fi
+    (( quiet )) || dot_info "cleared $(plural "$count" entry | sed 's/entrys$/entries/') from the database" >&2
+}
+
+# Ask whether to run the command; false on "no", timeout, or no terminal
+confirm() {
+    local answer
+    printf '%s (%s)? [y/N] ' "$CMD_TEXT" "$last_text" >&2
+    if ! read -r -t "$ASK_TIMEOUT" answer 2>/dev/null </dev/tty; then
+        echo >&2
+        return 1
+    fi
+    [[ $answer =~ ^[Yy]([Ee][Ss])?$ ]]
+}
+
+#=[ MAIN ]=====================================================================
+
+edit=0
+tag=""
+tag_set=0
+while getopts ":qvadceht:" opt; do
+    case "$opt" in
+        q) quiet=1; verbose=0 ;;
+        v) verbose=1; quiet=0 ;;
+        a) ask=1 ;;
+        d) dry_run=1 ;;
+        c) clear=1 ;;
+        e) edit=1 ;;
+        t) tag=$OPTARG; tag_set=1 ;;
+        h) usage; exit 0 ;;
+        :) die "-${OPTARG} needs an argument (see -h)" ;;
+        *) usage >&2; exit 2 ;;
+    esac
+done
+shift $(( OPTIND - 1 ))
+
+# The tag is the key of a db line: it can't hold the separators of the db
+if (( tag_set )); then
+    [[ -n ${tag//[[:space:]]/} ]] || die "empty tag"
+    [[ $tag != *[$'\t\n\r']* ]] || die "the tag can't contain tabs or newlines"
+    (( $# > 0 && ! clear && ! edit )) || die "-t needs an interval and a command (see -h)"
+fi
+
+if (( edit )); then
+    (( $# == 0 && ! clear )) || die "-e takes no interval, command or -c (see -h)"
+    edit_db
+    exit 0
+fi
+
+if (( clear )); then
+    (( $# == 0 )) || die "-c takes no interval or command (see -h)"
+    clear_db
+    exit 0
+fi
+
+if (( $# == 0 )); then
+    list_db
+    exit 0
+fi
+
+interval_words=()
+while (( $# > 0 )) && [[ $1 != ":" ]]; do
+    interval_words+=("$1")
+    shift
+done
+(( $# > 0 )) || die "missing ':' between the interval and the command (see -h)"
+shift
+(( ${#interval_words[@]} > 0 )) || die "missing interval (see -h)"
+(( $# > 0 )) || die "missing command (see -h)"
+
+interval=$(parse_interval "${interval_words[@]}") || die "cannot understand interval '${interval_words[*]}' (see -h)"
+KIND=${interval% *}
+COUNT=${interval#* }
+INTERVAL_TEXT=$(plural "$COUNT" "$KIND")
+
+# Entries are purged after PRUNE_AGE, so longer intervals can't be honored
+case "$KIND" in
+    second) (( COUNT > PRUNE_AGE )) ;;
+    minute) (( COUNT > PRUNE_AGE / 60 )) ;;
+    hour)   (( COUNT > PRUNE_AGE / 3600 )) ;;
+    day)   (( COUNT > PRUNE_AGE / 86400 )) ;;
+    week)  (( COUNT > 52 )) ;;
+    month) (( COUNT > 12 )) ;;
+    year)  (( COUNT > 1 )) ;;
+esac && { (( quiet )) || dot_warning "interval '${INTERVAL_TEXT}' is longer than a year, but entries are purged after $(( PRUNE_AGE / 86400 )) days: the command may run sooner" >&2; }
+
+# A single argument that looks like shell code, or "-" for a script on stdin, is
+# run by $SHELL -c; anything else runs as is, so "find ... -exec rm {} \;" still
+# passes ";" to find. Stdin is read now, so it's consumed even if the run is skipped
+script=""
+if (( $# == 1 )); then
+    if [[ $1 == - ]]; then
+        script=$(cat) || die "cannot read the script from stdin"
+        [[ -n ${script//[[:space:]]/} ]] || die "empty script on stdin"
+    else
+        case "$1" in
+            *[[:space:]\;\&\|\<\>\(\)\$\`\"\'\*\?\[\]\{\}~\\]*) script=$1 ;;
+        esac
+    fi
+fi
+
+NOW=$(date +%s)
+if [[ -n $script ]]; then
+    # The db has one entry per line: quote scripts with newlines or tabs
+    if [[ $script == *[$'\n\t\r']* ]]; then
+        KEY=$(printf '%q' "$script")
+    else
+        KEY=$script
+    fi
+    # Show a multi-line script as its first non-blank line and its length
+    n_lines=0
+    first=""
+    while IFS= read -r line; do
+        [[ -n ${line//[[:space:]]/} ]] || continue
+        (( ++n_lines ))
+        if [[ -z $first ]]; then
+            first=${line#"${line%%[![:space:]]*}"}
+        fi
+    done <<< "$script"
+    if (( n_lines > 1 )); then
+        CMD_TEXT="${first} … (${n_lines} lines)"
+    else
+        CMD_TEXT=$first
+    fi
+    set -- "${SHELL:-/bin/sh}" -c "$script"
+else
+    CMD_TEXT=$(printf '%q ' "$@")
+    CMD_TEXT=${CMD_TEXT% }
+    KEY=$CMD_TEXT
+fi
+if (( tag_set )); then
+    KEY=$tag
+    CMD_TEXT="${CMD_TEXT} [${tag}]"
+fi
+
+last=""
+entries=0
+if [[ -f $DB ]]; then
+    warn_bad_lines
+    # The latest valid run, if the command appears more than once
+    last=$(K="$KEY" NOW="$NOW" awk -F'\t' '
+        '"$VALID_ENTRY"' && $2 == ENVIRON["K"] && (m == "" || $1 + 0 > m + 0) { m = $1 }
+        END { if (m != "") print m }
+    ' "$DB")
+    entries=$(wc -l < "$DB" | tr -d ' ')
+fi
+
+say_verbose "db: ${DB} (${entries} entries)"
+if [[ -n $last ]]; then
+    last_text="last run $(fmt_duration $(( NOW - last ))) ago"
+else
+    last_text="never run"
+fi
+
+# Periods passed since the last run on each time scale, then how much is left
+# on the requested one before the command is due; empty if it is due now
+remaining=""
+if [[ -n $last ]]; then
+    read -r -a last_periods <<< "$(periods "$last")"
+    read -r -a now_periods <<< "$(periods "$NOW")"
+    diffs=()
+    diffs_text=()
+    passed=0
+    for i in "${!SCALES[@]}"; do
+        diffs[i]=$(( now_periods[i] - last_periods[i] ))
+        diffs_text+=("$(plural "${diffs[i]}" "${SCALES[i]}")")
+        [[ ${SCALES[i]} == "$KIND" ]] && passed=${diffs[i]}
+    done
+    printf -v joined '%s, ' "${diffs_text[@]}"
+    say_verbose "since the last run: ${joined%, }"
+    # Except for seconds, what's left is a number of period starts, not a duration
+    left=$(( COUNT - passed ))
+    if (( left > 0 )); then
+        if [[ $KIND == second ]]; then
+            remaining="due in $(fmt_duration "$left")"
+        elif (( left == 1 )); then
+            remaining="due at the start of the next ${KIND}"
+        else
+            remaining="due when ${left} more ${KIND}s have started"
+        fi
+    fi
+fi
+
+if [[ -n $remaining ]]; then
+    say "skipping ${CMD_TEXT} (${last_text}, ${remaining})"
+    (( dry_run )) || update_db
+    exit 1
+fi
+
+if (( dry_run )); then
+    say "would run ${CMD_TEXT} (${last_text})"
+    exit 0
+fi
+
+if (( ask )) && ! confirm; then
+    say "skipping ${CMD_TEXT} (${last_text}, not confirmed)"
+    update_db
+    exit 1
+fi
+
+say "running ${CMD_TEXT} (${last_text})"
+"$@"
+status=$?
+if (( status == 0 )); then
+    NOW=$(date +%s)
+    update_db "$NOW"
+else
+    (( quiet )) || dot_warning "${CMD_TEXT} failed with status ${status}; it will run again next time" >&2
+fi
+exit "$status"
